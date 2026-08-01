@@ -20,11 +20,11 @@ import ast
 import random
 # random.seed(42)
 
-from utils.unit_extraction import *
-from utils.stage_extraction import *
-from utils.abstraction_extraction import *
-from utils.superunit_extraction import *
-from utils.main_mapping import *
+from utils.Extraction.unit_extraction import run_unit_extraction
+from utils.Extraction.stage_extraction import *
+from utils.Extraction.abstraction_extraction import *
+from utils.Extraction.superunit_extraction import *
+from utils.Mapping.main_mapping import *
 
 
 def parse_arguments():

@@ -2,7 +2,7 @@ from itertools import combinations
 from typing import List, Tuple, Dict, Set
 from tqdm import tqdm
 
-from utils.helper_function import *
+from utils.Mapping.helper_function import *
 
 
 def get_all_possible_pairs_map(base, target):

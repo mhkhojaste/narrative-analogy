@@ -28,9 +28,9 @@ from sentence_transformers.util import normalize_embeddings
 
 random.seed(309)
 
-from utils.helper_function import *
-from utils.mappings import *
-from utils.beam_search import *
+from utils.Mapping.helper_function import *
+from utils.Mapping.mappings import *
+from utils.Mapping.beam_search import *
 from utils.helper_utils import *
 
 

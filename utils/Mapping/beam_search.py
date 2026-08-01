@@ -1,5 +1,5 @@
 import copy
-from utils.mappings import *
+from utils.Mapping.mappings import *
 
 def beam_search(base, target, result_list, top_output):
 

@@ -22,7 +22,9 @@ import torch
 
 ## Define dicts
 model_short_dict = {"Qwen3-1.7B":"Qwen1_", "Llama-3.1-8B":"Llama8_", "Qwen3-8B":"Qwen8_", "Qwen3-8B-vllm":"Qwen8vllm_", "Llama-3.1-8B-vllm":"Llama8vllm_"}
-task_abstraction_short = {"abstraction_extraction1": "abstraction1", "abstraction_extraction2": "abstraction2", "abstraction_extraction3": "abstraction3", "abstraction_extraction4": "abstraction4", "abstraction_extraction5":"abstraction5", "abstraction_extraction6":"abstraction6", "abstraction_extraction7":"abstraction7", "abstraction_extraction8":"abstraction8", "abstraction_extraction20":"abstraction20", "abstraction_extraction21":"abstraction21", "abstraction_extraction22":"abstraction22", "abstraction_extraction23":"abstraction23", "abstraction_extraction24":"abstraction24", "abstraction_extraction25":"abstraction25", "abstraction_extraction26":"abstraction26", "stage_extraction3": "stage3", "superunit2":"superunit2", "stage_extraction1": "stage1", "superunit1":"superunit1", "superunit3": "superunit3", "superunit4": "superunit4"}
+task_abstraction_short = {"timeline_extraction": "timeline", "conceptual_abstraction_level0": "conceptual0", "conceptual_abstraction_level1": "conceptual1",
+        "evaluative_abstraction": "evaluative", "arc_abstraction": "arc","stage_abstraction": "stage"}
+
 task_stage_short  = {"stage_extraction": "stage", "stage_extraction2": "stage2", "stage_extraction3": "stage3"}
 
 
@@ -34,7 +36,7 @@ def read_json_file(file_path):
     return data
     
 
-config = read_json_file("../../../UtilsYF/config.json")
+config = read_json_file("../config.json")
 
 
 # openai_key = config['openai_key']
@@ -357,3 +359,34 @@ def check_model_answer(result):
         return int(result)
     else:
         return 5
+
+
+def gpu_analysis(prompts):
+    prompt_lengths = []
+    print("Counting tokens per prompt...")
+    for p in tqdm(prompts, desc="Prompts"):
+        prompt_lengths.append(tokenise_vllm_batch(p))
+
+    num_prompts = len(prompt_lengths)
+    avg_len = sum(prompt_lengths) / num_prompts
+    max_len = max(prompt_lengths)
+    print(f"\n=== Per-prompt stats ===")
+    print(f"Prompts: {num_prompts}")
+    print(f"Average length: {avg_len:.1f} tokens")
+    print(f"Max length: {max_len} tokens")
+
+    # ---- Per-batch totals ----
+    batch_sizes=[8, 16, 32]
+
+    for bs in batch_sizes:
+        batch_totals = []
+        for i in range(0, num_prompts, bs):
+            batch_totals.append(sum(prompt_lengths[i:i+bs]))
+        avg_batch = sum(batch_totals) / len(batch_totals)
+        max_batch = max(batch_totals)
+        print(f"\n=== Batch size {bs} ===")
+        print(f"Number of batches: {len(batch_totals)}")
+        print(f"Average batch total: {avg_batch:.1f} tokens")
+        print(f"Max batch total: {max_batch} tokens")
+
+    print("prompt_lengths: ", prompt_lengths)
