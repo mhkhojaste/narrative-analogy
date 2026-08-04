@@ -381,6 +381,7 @@ def abstraction_extraction_pipeline_all(dataset_data, dataset_event, dataset_nam
                 abstractions_out = map_text_to_abstraction(convert_events_to_object_array(events), raw, target_number)
 
             abstraction_dict.setdefault(row_idx, {})[field_name] = abstractions_out
+            
 
         global_offset += len(chunk)
 
@@ -397,8 +398,6 @@ def abstraction_extraction_pipeline_all(dataset_data, dataset_event, dataset_nam
         pickle.dump(abstraction_dict, f)
 
     print("saved as:", path_save)
-
-    return abstraction_dict
 
         
 def run_abstraction_extraction(args):

@@ -21,9 +21,7 @@ import random
 # random.seed(42)
 
 from utils.Extraction.unit_extraction import run_unit_extraction
-from utils.Extraction.stage_extraction import *
-from utils.Extraction.abstraction_extraction import *
-from utils.Extraction.superunit_extraction import *
+from utils.Extraction.abstraction_extraction import run_abstraction_extraction
 from utils.Mapping.main_mapping import *
 
 
@@ -51,20 +49,12 @@ def run_task(args):
     if args.task == "unit_extraction":
         print("\n Start extracting units\n ------------")
         run_unit_extraction(args)
-    if "stage_extraction" in args.task:
-        print("\n Start extracting stages in abstraction mode\n ------------")
-        # run_stage_extraction(args)
-        run_abstraction_extraction(args)
-    if "abstraction_extraction" in args.task:
-        print("\n Start extracting abstractions\n ------------")
-        run_abstraction_extraction(args)
-    if "super" in args.task:
-        print("\n Start extracting super-units in abstraction mode\n ------------")
-        run_abstraction_extraction(args)
-        # run_superunit_extraction(args)
-    if args.task == "mapping":
+    elif args.task == "mapping":
         print("\n Start mapping\n ------------")
         run_main_mapping(args)
+    else:
+        print(f"\n Start extracting abstractions for {args.task}\n ------------")
+        run_abstraction_extraction(args)
         
     
 def main():
