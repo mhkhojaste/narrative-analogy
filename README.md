@@ -11,6 +11,7 @@ python main.py --dataset ARN --model Qwen3-8B-vllm --task "conceptual_abstractio
 python main.py --dataset ARN --model Qwen3-8B-vllm --task "conceptual_abstraction_level1" --unit "events"
 python main.py --dataset ARN --model Qwen3-8B-vllm --task "evaluative_abstraction" --unit "events"
 python main.py --dataset ARN --model Qwen3-8B-vllm --task "arc_abstraction" --unit "events"
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "stage_abstraction" --unit "events"
 
 
 This repository builds *structural maps* for two narratives. It extracts story units, abstracts them to higher-level concepts, groups them into stages and super-units, and finally computes local and global mappings between the narratives. The pipeline also produces scores that indicate how correct each mapping is.

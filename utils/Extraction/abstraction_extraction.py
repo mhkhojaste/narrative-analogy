@@ -372,6 +372,7 @@ def abstraction_extraction_pipeline_all(dataset_data, dataset_event, dataset_nam
         for raw, (row_idx, field_name) in zip(raw_texts, slice_map):
             if args.task == "stage_abstraction":
                 abstractions_out = map_text_to_stages(raw)
+
             else:
                 events = dataset_event[row_idx][field_name]
 

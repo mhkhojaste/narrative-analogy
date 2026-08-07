@@ -25,7 +25,6 @@ model_short_dict = {"Qwen3-1.7B":"Qwen1_", "Llama-3.1-8B":"Llama8_", "Qwen3-8B":
 task_abstraction_short = {"timeline_extraction": "timeline", "conceptual_abstraction_level0": "conceptual0", "conceptual_abstraction_level1": "conceptual1",
         "evaluative_abstraction": "evaluative", "arc_abstraction": "arc","stage_abstraction": "stage"}
 
-task_stage_short  = {"stage_extraction": "stage", "stage_extraction2": "stage2", "stage_extraction3": "stage3"}
 
 
 

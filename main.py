@@ -22,7 +22,7 @@ import random
 
 from utils.Extraction.unit_extraction import run_unit_extraction
 from utils.Extraction.abstraction_extraction import run_abstraction_extraction
-from utils.Mapping.main_mapping import *
+from utils.Mapping.main_mapping import run_main_mapping
 
 
 def parse_arguments():
