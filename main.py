@@ -30,19 +30,12 @@ def parse_arguments():
     parser.add_argument('--dataset', required=True, help="Name of the dataset to use")
     parser.add_argument('--model', required=True, help="Model name")
     parser.add_argument('--task', required=True, help="Task")
-    
     parser.add_argument('--unit', required=True, help="Story unit")
     
-    parser.add_argument('--enrichment', default="none", help="Relations between units or stage or none")
-    
-    parser.add_argument('--scoring_unit', default="unit", help="What units to use: unit, abstraction1, abstraction2, relations, stage_abstraction")
-    parser.add_argument('--scoring_method', default="verbalized", help="How to calculate the score, only triple, or verbalized")
-    parser.add_argument('--scoring_constraint', default="none", help="whether to include some constraint here or not: none, soft, hard")
-    
-    parser.add_argument('--global_match', default="Beam-search", help="Global Matching")
-    parser.add_argument("--top_output", type=int, default=5, help="Beam width (number of top paths to keep)")
-    parser.add_argument("--version", type=int, default=0, help="The version number of the experiment")
-    parser.add_argument("--load_version", type=int, default=0, help="The version number of the previous experiment, that we want to load")
+    parser.add_argument('--scoring_method', default="cosine", help="How to calculate the score")
+    parser.add_argument('--global_map', default="Greedy", help="Global Mapping")
+    parser.add_argument('--config', type=json.loads, default={}, help='Dictionary in JSON format' )
+
     return parser.parse_args()
 
 def run_task(args):

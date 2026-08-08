@@ -23,9 +23,6 @@ import copy
 import torch
 from sentence_transformers.util import normalize_embeddings
 
-
-
-
 random.seed(309)
 
 from utils.Mapping.helper_function import *
@@ -33,14 +30,17 @@ from utils.Mapping.mappings import *
 from utils.Mapping.beam_search import *
 from utils.helper_utils import *
 
+# from utils.Mapping.helper_function import get_embedding_model
+# from utils.Mapping.mappings import get_all_possible_pairs_map
+# from utils.Mapping.beam_search import 
+# from utils.helper_utils import 
+
 
 PATH_DATASET = "Data/Datasets/"
 PATH_UNITS = "Data_new/Units/"
 PATH_ABSTRACTION = "Data_new/Abstraction/"
-PATH_STAGE = "Data_new/Stage/"
-PATH_SUPERUNIT = "Data_new/Super_units/"
 
-RESULTS_DIR = "results2/"
+RESULTS_DIR = "results/"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 RESULTS_PATH = RESULTS_DIR + "results.csv"
 
@@ -829,280 +829,27 @@ def mapping_pipeline_MCQ(embedding_model, mcq_data, mcq_event, mcq_enrichment, m
     return result, "-"   
 
 
-######### Random datasets and without batching
 
-def mapping_pipeline_ARN_random(embedding_model, arn_data, arn_event, arn_enrichment, arn_score_unit, args):
-    
-    y_true = []
-    y_pred = []
-    category_dict_ref = {'low-near': 29, 'low-far': 34, 'high-near': 19, 'high-far': 18}
-    category_dict = {'low-near': 0, 'low-far': 0, 'high-near': 0, 'high-far': 0}
-    
-    for index in tqdm(arn_data):
-        # print()
-        # print("index: ", index)
-        # print("*")
-        sample = arn_data[index]
-        base_story = sample['base_story'].strip()
-        target_story1 = sample['target0'].strip()
-        target_story2 = sample['target1'].strip()
-        
-        
-        correct_answer = int(sample['correct_answer'])
-        y_true.append(correct_answer)
-        category = sample['category']
-        
-        sample_event = arn_event[index]
-        base_event = sample_event["base"]
-        target1_event = sample_event["target1"]
-        target2_event = sample_event["target2"]
-        
-        # print("base_event: ", base_event)
-        # print("target1_event: ", target1_event)
-        # print("target2_event: ", target2_event)
-        # print("*")
-        
-        
-        if len(arn_enrichment)>0 : 
-            sample_enrichment = arn_enrichment[index]
-            base_enrichment = sample_enrichment["base"]
-            target1_enrichment = sample_enrichment["target1"]
-            target2_enrichment = sample_enrichment["target2"]
-        else:
-            base_enrichment = {}
-            target1_enrichment = {}
-            target2_enrichment = {}
-        
-        # print("base_enrichment: ", base_enrichment)
-        # print("target1_enrichment: ", target1_enrichment)
-        # print("target2_enrichment: ", target2_enrichment)
-        # print("*")
-        
-        sample_score_unit = arn_score_unit[index]
-        base_score_unit = sample_score_unit["base"]
-        target1_score_unit = sample_score_unit["target1"]
-        target2_score_unit = sample_score_unit["target2"]
-        
-        # print("base_score_unit: ", base_score_unit)
-        # print("target1_score_unit: ", target1_score_unit)
-        # print("target2_score_unit: ", target2_score_unit)
-        # print("*")
-        
-        
-        maps1 = get_best_pair_mapping(embedding_model, get_all_possible_pairs_map(base_event, target1_event), args, [base_enrichment, target1_enrichment], [base_score_unit, target1_score_unit])
-        final_solutions1 = beam_search(base_event, target1_event, maps1, args.top_output)
-        max_score1, total_score1 = compute_max_and_total_scores(final_solutions1)
-        
-        
-        if args.global_match == "Beam-search2":
-            final_solutions1 = update_mapping_scores(embedding_model, args, final_solutions1, [base_enrichment, target1_enrichment], [base_score_unit, target1_score_unit])
-            max_score1, total_score1 = compute_max_and_total_scores(final_solutions1)
-            
-        # print("maps1: ", maps1)
-        # print("final_solutions1: ", final_solutions1)
-        # print("total_score1: ", total_score1)
-        # print("*")
-        
-        
-        
-        maps2 = get_best_pair_mapping(embedding_model, get_all_possible_pairs_map(base_event, target2_event), args, [base_enrichment, target2_enrichment], [base_score_unit, target2_score_unit])
-        final_solutions2 = beam_search(base_event, target2_event, maps2, args.top_output)
-        max_score2, total_score2 = compute_max_and_total_scores(final_solutions2)
+########## New clean metthdd (TODO: I should remove this comment at the end)
+def extract_story_units(main_data, main_unit, args):
+    stories_events = {}
+    for index in tqdm(range(len(main_data))):
+        sample_unit = main_unit[index]
+        base_unit = sample_unit["base"]
 
-        
-        if args.global_match == "Beam-search2":
-            final_solutions2 = update_mapping_scores(embedding_model, args, final_solutions2, [base_enrichment, target2_enrichment], [base_score_unit, target2_score_unit])
-            max_score2, total_score2 = compute_max_and_total_scores(final_solutions2)
-            
-        # print("maps2: ", maps2)
-        # print("final_solutions2: ", final_solutions2)
-        # print("total_score2: ", total_score2)
-        # print("*")
+        target_keys = sorted(key for key in sample_unit if key.startswith("target"))
 
-        
-        
-        
-        
-        total_scores = [total_score1, total_score2]
-        
-        # print("total_scores: ", total_scores)
-        
-        max_value = max(total_scores)
-        max_indices = [i for i, val in enumerate(total_scores) if val == max_value]
-        max_index = random.choice(max_indices)
-        
-        # print("category: ", category)
-        # print("correct_answer: ", correct_answer)
-        # print("y_pred: ", max_index)
-        # print("#####################")
-        # sddsdsdsds
-        y_pred.append(max_index)
-        if y_true[-1] == y_pred[-1]:
-            category_dict[category] += 1
-            
-        append_experiment(args, index, base_story, [target_story1, target_story2], correct_answer, [maps1, maps2], [final_solutions1, final_solutions2])
-    
-    
-    result = metrics.accuracy_score(y_true, y_pred)
-    for key in category_dict:
-        category_dict[key] = round(category_dict[key]/category_dict_ref[key], 3)
-        
-    return result, category_dict
-        
-        
-    
-    
-def mapping_pipeline_MCQ_random(embedding_model, mcq_data, mcq_event, mcq_enrichment, mcq_score_unit, args):
-    
-    y_true = []
-    y_pred = []
-    
-    for index in tqdm(mcq_data):
-        # print()
-        # print("index: ", index)
-        # print("*")
-        
-        sample = mcq_data[index]
-        base_story = sample['base_story']
-        target_story1 = sample['target0']
-        target_story2 = sample['target1']
-        target_story3 = sample['target2']
-        target_story4 = sample['target3']
-        
-        correct_answer = int(sample['correct_answer'])
-        y_true.append(correct_answer)
-        
-        
-        sample_event = mcq_event[index]
-        base_event = sample_event["base"]
-        target1_event = sample_event["target1"]
-        target2_event = sample_event["target2"]
-        target3_event = sample_event["target3"]
-        target4_event = sample_event["target4"]
-        
-        # print("base_event: ", base_event)
-        # print("target1_event: ", target1_event)
-        # print("target2_event: ", target2_event)
-        # print("target3_event: ", target3_event)
-        # print("target4_event: ", target4_event)
-        # print("*")
-        
-        
-        if len(mcq_enrichment)>0 : 
-            sample_enrichment = mcq_enrichment[index]
-            base_enrichment = sample_enrichment["base"]
-            target1_enrichment = sample_enrichment["target1"]
-            target2_enrichment = sample_enrichment["target2"]
-            target3_enrichment = sample_enrichment["target3"]
-            target4_enrichment = sample_enrichment["target4"]
-        else:
-            base_enrichment = {}
-            target1_enrichment = {}
-            target2_enrichment = {}
-            target3_enrichment = {}
-            target4_enrichment = {}
-        
-        # print("base_enrichment: ", base_enrichment)
-        # print("target1_enrichment: ", target1_enrichment)
-        # print("target2_enrichment: ", target2_enrichment)
-        # print("target3_enrichment: ", target3_enrichment)
-        # print("target4_enrichment: ", target4_enrichment)
-        # print("*")
-        
-        sample_score_unit = mcq_score_unit[index]
-        base_score_unit = sample_score_unit["base"]
-        target1_score_unit = sample_score_unit["target1"]
-        target2_score_unit = sample_score_unit["target2"]
-        target3_score_unit = sample_score_unit["target3"]
-        target4_score_unit = sample_score_unit["target4"]
-        
-        # print("base_score_unit: ", base_score_unit)
-        # print("target1_score_unit: ", target1_score_unit)
-        # print("target2_score_unit: ", target2_score_unit)
-        # print("target3_score_unit: ", target3_score_unit)
-        # print("target4_score_unit: ", target4_score_unit)
-        # print("*")
-        
-        
-        
-        maps1 = get_best_pair_mapping(embedding_model, get_all_possible_pairs_map(base_event, target1_event), args, [base_enrichment, target1_enrichment], [base_score_unit, target1_score_unit])
-        final_solutions1 = beam_search(base_event, target1_event, maps1, args.top_output)
-        max_score1, total_score1 = compute_max_and_total_scores(final_solutions1)
-        
-        # print("maps1: ", maps1)
-        # print("final_solutions1: ", final_solutions1)
-        # print("total_score1: ", total_score1)
-        
-        if args.global_match == "Beam-search2":
-            final_solutions1 = update_mapping_scores(embedding_model, args, final_solutions1, [base_enrichment, target1_enrichment], [base_score_unit, target1_score_unit])
-            max_score1, total_score1 = compute_max_and_total_scores(final_solutions1)
-        
+        for target_key in target_keys:
+            target_unit = sample_unit[target_key]
+            stories_events = get_pairs_update(get_all_possible_pairs_map(base_unit, target_unit), sample_unit, stories_events, args)
 
-        
-        
-        maps2 = get_best_pair_mapping(embedding_model, get_all_possible_pairs_map(base_event, target2_event), args, [base_enrichment, target2_enrichment], [base_score_unit, target2_score_unit])
-        final_solutions2 = beam_search(base_event, target2_event, maps2, args.top_output)
-        max_score2, total_score2 = compute_max_and_total_scores(final_solutions2)
-        
-        # print("maps2: ", maps2)
-        # print("final_solutions2: ", final_solutions2)
-        # print("total_score2: ", total_score2)
-        
-        if args.global_match == "Beam-search2":
-            final_solutions2 = update_mapping_scores(embedding_model, args, final_solutions2, [base_enrichment, target2_enrichment], [base_score_unit, target2_score_unit])
-            max_score2, total_score2 = compute_max_and_total_scores(final_solutions2)
-        
-        
-        
-        
-        maps3 = get_best_pair_mapping(embedding_model, get_all_possible_pairs_map(base_event, target3_event), args, [base_enrichment, target3_enrichment], [base_score_unit, target3_score_unit])
-        final_solutions3 = beam_search(base_event, target3_event, maps3, args.top_output)
-        max_score3, total_score3 = compute_max_and_total_scores(final_solutions3)
-        
-        # print("maps3: ", maps3)
-        # print("final_solutions3: ", final_solutions3)
-        # print("total_score3: ", total_score3)
-        
-        if args.global_match == "Beam-search2":
-            final_solutions3 = update_mapping_scores(embedding_model, args, final_solutions3, [base_enrichment, target3_enrichment], [base_score_unit, target3_score_unit])
-            max_score3, total_score3 = compute_max_and_total_scores(final_solutions3)
-        
-        
-        
-        maps4 = get_best_pair_mapping(embedding_model, get_all_possible_pairs_map(base_event, target4_event), args, [base_enrichment, target4_enrichment], [base_score_unit, target4_score_unit])
-        final_solutions4 = beam_search(base_event, target4_event, maps4, args.top_output)
-        max_score4, total_score4 = compute_max_and_total_scores(final_solutions4)
-        
-        # print("maps4: ", maps4)
-        # print("final_solutions4: ", final_solutions4)
-        # print("total_score4: ", total_score4)
-        
-        if args.global_match == "Beam-search2":
-            final_solutions4 = update_mapping_scores(embedding_model, args, final_solutions4, [base_enrichment, target4_enrichment], [base_score_unit, target4_score_unit])
-            max_score4, total_score4 = compute_max_and_total_scores(final_solutions4)
-        
-        
-        
-        
-        total_scores = [total_score1, total_score2, total_score3, total_score4]
-        
-        # print("total_scores: ", total_scores)
-        
+    return stories_events
 
-        max_value = max(total_scores)
-        max_indices = [i for i, val in enumerate(total_scores) if val == max_value]
-        max_index = random.choice(max_indices)
-        
-        # print("correct_answer: ", correct_answer)
-        # print("y_pred: ", max_index)
-        # print("#####################")
-        # xcxcxccxxc
-        y_pred.append(max_index)
-        
-        append_experiment(args, index, base_story, [target_story1, target_story2, target_story3, target_story4], correct_answer, [maps1, maps2, maps3, maps4], [final_solutions1, final_solutions2, final_solutions3, final_solutions4])
-        
-    result = metrics.accuracy_score(y_true, y_pred)
-    return result, "-"   
+
+def Greedy_mapping(main_data, main_units, embedding_model, args):
+    return "-"
+
+
 
 def extract_kernel_names_stages(data):
     result = {}
@@ -1122,141 +869,56 @@ def map_kernel_to_tp(data):
             result[idx][section] = kernel_map
     return result
     
-def load_data_mapping(args):
-    
-    data_short = args.dataset.lower()
-    model_short = model_short_dict.get(args.model)
-    
-    ## Load main data
-    path_save_dataset = f"{PATH_DATASET}{data_short}_subset.pkl"
-    with open(path_save_dataset, 'rb') as f:
-        main_data = pickle.load(f)
-        
-    ## Load main events
-    path_save_event = f"{PATH_UNITS}{model_short}{args.unit}_{data_short}.pkl"
-    with open(path_save_event, 'rb') as f:
-        main_event = pickle.load(f)
-        
-        
-    ## Load enrichment
-    if args.enrichment == "stage":
-        path_save_enrichment = f"{PATH_STAGE}{model_short}{args.unit}_stage_{data_short}.pkl"
-        with open(path_save_enrichment, 'rb') as f:
-            main_enrichment = pickle.load(f)
-    elif "stage_rel" in args.enrichment:
-        path_save_enrichment = f"Data/Relations/{model_short}{args.unit}_stage_relations_{data_short}.pkl"
-        with open(path_save_enrichment, 'rb') as f:
-            main_enrichment = pickle.load(f)
-    elif args.enrichment == "none":
-        main_enrichment = {}
-        
-    
-    ## Load scoring units
-    if args.scoring_unit == "unit":
-        path_save_score_unit = f"{PATH_UNITS}{model_short}{args.unit}_{data_short}.pkl"
-    elif args.scoring_unit == "abstraction1":
-        path_save_score_unit = f"{PATH_ABSTRACTION}{model_short}{args.unit}_abstraction1_dict_{data_short}.pkl"
-    elif args.scoring_unit == "abstraction2":
-        path_save_score_unit = f"{PATH_ABSTRACTION}{model_short}{args.unit}_abstraction2_dict_{data_short}.pkl"
-    elif args.scoring_unit == "abstraction3":
-        path_save_score_unit = f"{PATH_ABSTRACTION}{model_short}{args.unit}_abstraction3_dict_{data_short}.pkl"
-    elif args.scoring_unit == "abstraction4":
-        path_save_score_unit = f"{PATH_ABSTRACTION}{model_short}{args.unit}_abstraction4_dict_{data_short}.pkl"
-    elif args.scoring_unit == "stage_abstraction":
-        path_save_score_unit = f"{PATH_ABSTRACTION}{model_short}{args.unit}_stage_abstraction_{data_short}.pkl"
-    elif args.scoring_unit == "stage_abstraction2" or args.scoring_unit == "stage_abstraction3":
-        stage_num = {"stage_abstraction2":"stage2", "stage_abstraction3":"stage3"}.get(args.scoring_unit)
-        task_short  = {"stage2": "super1", "stage3": "super3"}.get(stage_num)
-        path_save_score_unit = f"{PATH_SUPERUNIT}{model_short}{args.unit}_{stage_num}_{task_short}_{data_short}.pkl"
 
         
-        
-        
-    with open(path_save_score_unit, 'rb') as f:
-        main_score_unit = pickle.load(f)
-        
-    if args.scoring_unit == "stage_abstraction" or args.scoring_unit == "stage_abstraction2" or args.scoring_unit == "stage_abstraction3":
-        main_event = extract_kernel_names_stages(main_score_unit)
-        main_score_unit = map_kernel_to_tp(main_score_unit)
-        
-        
-    return main_data, main_event, main_enrichment, main_score_unit
-        
     
-def load_data_mapping_full_dataset(args):
+def load_data(args):
     data_short = args.dataset.lower()
     model_short = model_short_dict.get(args.model)
 
-    ## Load main data
     if data_short == "arn":
-        main_data = pd.read_csv('Data/Datasets/Analogical Reasoning on Narratives (ARN) dataset.xlsx - Sheet1.csv')
+        main_data = pd.read_csv(
+            "Data/Datasets/Analogical Reasoning on Narratives (ARN) dataset.xlsx - Sheet1.csv"
+        )
     elif data_short == "mcq":
-        with open('Data/Datasets/storyanalogy_multiple_choice.json') as f:
+        with open("Data/Datasets/storyanalogy_multiple_choice.json") as f:
             main_data = json.load(f)
-
-    ## Load main events
-    path_save_event = f"{PATH_UNITS}{model_short}{args.unit}_{data_short}.pkl"
-    with open(path_save_event, 'rb') as f:
-        main_event = pickle.load(f)
-
-    ## Load scoring units
-    if args.scoring_unit == "unit":
-        path_save_score_unit = f"{PATH_UNITS}{model_short}{args.unit}_{data_short}.pkl"
-    elif "abstraction" in args.scoring_unit:
-        path_save_score_unit = f"{PATH_ABSTRACTION}{model_short}{args.unit}_{args.scoring_unit}_{data_short}.pkl"
-    elif "superunit" in args.scoring_unit:
-        path_save_score_unit = f"{PATH_ABSTRACTION}{model_short}{args.unit}_{args.scoring_unit}_{data_short}.pkl"
-
-
-    with open(path_save_score_unit, 'rb') as f:
-        main_score_unit = pickle.load(f)
-
-    if "superunit" in args.scoring_unit:
-        main_event = main_score_unit
-
-    ## Load enrichment
-    if "abstraction" in args.enrichment or "stage" in args.enrichment or "superunit" in args.enrichment:
-        path_save_enrichment = f"{PATH_ABSTRACTION}{model_short}{args.unit}_{args.enrichment}_{data_short}.pkl"
     else:
-        path_save_enrichment = ""
+        raise ValueError(f"Unsupported dataset: {args.dataset}")
 
-    if path_save_enrichment == "":
-        main_enrichment = {}
-    else:
-        with open(path_save_enrichment, 'rb') as f:
-            main_enrichment = pickle.load(f)
+    path_units = (
+        f"{PATH_UNITS}{model_short}{args.unit}_{data_short}.pkl"
+        if args.unit == "events"
+        else f"{PATH_ABSTRACTION}{model_short}events_{args.unit}_{data_short}.pkl"
+    )
 
+    with open(path_units, "rb") as f:
+        main_units = pickle.load(f)
 
-    return main_data, main_event, main_enrichment, main_score_unit
+    return main_data, main_units
 
 
 def run_main_mapping(args):
     print("\n=== Step 1: Loading embedding model ===")
     embedding_model = get_embedding_model()
     
-    print("\n=== Step 2: Run on Dataset ===")
-    
-    if args.dataset == "ARN_random":
-        arn_data, arn_event, arn_enrichment, arn_score_unit = load_data_mapping(args)
-        
-        accuracy, arn_category = mapping_pipeline_ARN_random(embedding_model, arn_data, arn_event, arn_enrichment, arn_score_unit, args)
-
+    print("\n=== Step 2: Loading the Dataset and the Units ===")
     if args.dataset == "ARN":
-         arn_data, arn_event, arn_enrichment, arn_score_unit = load_data_mapping_full_dataset(args)
-
-         accuracy, arn_category = mapping_pipeline_ARN(embedding_model, arn_data, arn_event, arn_enrichment, arn_score_unit, args)
-
-        
-    elif args.dataset == "MCQ_random":
-        mcq_data, mcq_event, mcq_enrichment, mcq_score_unit = load_data_mapping(args)
-                
-        accuracy, arn_category = mapping_pipeline_MCQ_random(embedding_model, mcq_data, mcq_event, mcq_enrichment, mcq_score_unit, args)
-
+         main_data, main_units = load_data(args)
     elif args.dataset == "MCQ":
-        mcq_data, mcq_event, mcq_enrichment, mcq_score_unit = load_data_mapping_full_dataset(args)
+        main_data, main_units = load_data(args)
 
-        accuracy, arn_category = mapping_pipeline_MCQ(embedding_model, mcq_data, mcq_event, mcq_enrichment, mcq_score_unit, args)
-        
+    
+    print(f"\n=== Step 3: Run the mapping with {arg.global_map} mapping and {args.scoring_method} scoring and {arg.config} config")
+    if arg.global_map == "Greedy":
+        accuracy, arn_category_accuracy = Greedy_mapping(main_data, main_units, embedding_model, args)
+
+    elif arg.global_map == "Order":
+        accuracy, arn_category_accuracy = 0, 0
+
+    elif arg.global_map == "max_flow":
+        accuracy, arn_category_accuracy = 0, 0
+    
     print("accuracy: ", accuracy)
     print("arn_category: ", arn_category)
     

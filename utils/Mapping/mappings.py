@@ -291,61 +291,76 @@ def get_best_pair_mapping(embedding_model, available_maps, args, all_enrichment,
 
 ##### New methods on full dataset
 
-def generate_scores_sent(args, final_units):
-    if args.scoring_method == "verbalized":
-        sentence1 = " ".join(final_units)
-        return [sentence1]
-    elif args.scoring_method == "triple":
-        return final_units
-    elif args.scoring_method == "triple1":
-        final_units = [v.replace("_", " ").lower() for v in final_units]
-        new_units = [v for v1 in final_units for v in v1.split()[:2]]
-        return new_units
-    elif args.scoring_method == "triple2":
-        final_units = [v.replace("_", " ").lower() for v in final_units]
-        new_units = [v.split()[1] if len(v.split()) > 1 else v for v in final_units]
-        return new_units
+# def generate_scores_sent(args, final_units):
+#     if args.scoring_method == "verbalized":
+#         sentence1 = " ".join(final_units)
+#         return [sentence1]
+#     elif args.scoring_method == "triple":
+#         return final_units
+#     elif args.scoring_method == "triple1":
+#         final_units = [v.replace("_", " ").lower() for v in final_units]
+#         new_units = [v for v1 in final_units for v in v1.split()[:2]]
+#         return new_units
+#     elif args.scoring_method == "triple2":
+#         final_units = [v.replace("_", " ").lower() for v in final_units]
+#         new_units = [v.split()[1] if len(v.split()) > 1 else v for v in final_units]
+#         return new_units
 
 
-def score_event_phrases_no_enrichment_new(args, given_units, given_all_score_unit, given_enrichment):
+# def score_event_phrases_no_enrichment_new(args, given_units, given_all_score_unit, given_enrichment):
         
-    if args.scoring_unit == "unit" or "only_abstractions" in args.scoring_constraint or "superunit" in args.scoring_unit:
-        if args.scoring_constraint == "soft":
-            stages_dict_pre = {"TP1" : "Introduction", "TP2" : "Event", "TP3" : "Challenge", "TP4" : "Action", "TP5" : "Conclusion"}
-            units1 = [item for u in given_units for item in (u, stages_dict_pre.get(given_enrichment.get(u, u), ""))]
-        else:
-            units1 = list(given_units)
-        return generate_scores_sent(args, units1)
-    elif "abstraction" in args.scoring_unit:
-        if args.scoring_constraint == "soft":
-            dicts = [given_all_score_unit, given_enrichment]
-            units1 = [d.get(u, u) for u in given_units for d in dicts]
-        else:
-            units1 = [given_all_score_unit.get(u, u) for u in given_units]
+#     if args.scoring_unit == "unit" or "only_abstractions" in args.scoring_constraint or "superunit" in args.scoring_unit:
+#         if args.scoring_constraint == "soft":
+#             stages_dict_pre = {"TP1" : "Introduction", "TP2" : "Event", "TP3" : "Challenge", "TP4" : "Action", "TP5" : "Conclusion"}
+#             units1 = [item for u in given_units for item in (u, stages_dict_pre.get(given_enrichment.get(u, u), ""))]
+#         else:
+#             units1 = list(given_units)
+#         return generate_scores_sent(args, units1)
+#     elif "abstraction" in args.scoring_unit:
+#         if args.scoring_constraint == "soft":
+#             dicts = [given_all_score_unit, given_enrichment]
+#             units1 = [d.get(u, u) for u in given_units for d in dicts]
+#         else:
+#             units1 = [given_all_score_unit.get(u, u) for u in given_units]
 
-        return generate_scores_sent(args, units1)
-
-
-        
+#         return generate_scores_sent(args, units1)    
 
 
-def get_pairs_update(available_maps, args, all_enrichment, all_score_unit, all_stories_events):
+def format_units_for_scoring(units, args):
+    # Modify unit text before scoring.
+    # Example: remove underscores, normalize casing, etc.
+    return units
+
+
+def prepare_units_for_scoring(given_units, all_units, args):
+    # Change or enrich the units depending on the scoring setup.
+    # Example: for soft scoring, add related abstraction units.
+    if args.unit == "events":
+        final_units = list(given_units)
+    else:
+        # TODO: handle abstraction-based units here.
+        final_units = list(given_units)
+
+    return format_units_for_scoring(final_units, args)
+
+
+def score_pair(pair, all_units, args):
+    final_units = prepare_units_for_scoring(pair, all_units, args)
+    return generate_scores_sent(final_units, args)
+
+
+def get_pairs_update(available_maps, units, args, all_stories_events): 
+    # This function is the main function to loop over the mappings
     result_stories_events = dict(all_stories_events)
     for mapping in available_maps:
         for direction in mapping:
             b1, b2 = direction[0]
             t1, t2 = direction[1]
 
-                
-            if "unit_event_phrases" in args.unit:
-                # if args.enrichment == "none":
-                if f"{b1}#{b2}" not in result_stories_events:
-                    result_stories_events[f"{b1}#{b2}"] = score_event_phrases_no_enrichment_new(args, [b1, b2], all_score_unit[0], all_enrichment[0])
-                        
-                        
-                if f"{t1}#{t2}" not in result_stories_events:
-                    result_stories_events[f"{t1}#{t2}"] = score_event_phrases_no_enrichment_new(args, [t1, t2], all_score_unit[1], all_enrichment[1])
-
+            if f"{b1}#{b2}" not in result_stories_events:
+                result_stories_events[f"{b1}#{b2}"] = score_pair([b1, b2], units, args)
+            if f"{t1}#{t2}" not in result_stories_events:
+                result_stories_events[f"{t1}#{t2}"] = score_pair([t1, t2], units, args)
 
     return result_stories_events
 
