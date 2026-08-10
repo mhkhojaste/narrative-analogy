@@ -830,24 +830,87 @@ def mapping_pipeline_MCQ(embedding_model, mcq_data, mcq_event, mcq_enrichment, m
 
 
 
-########## New clean metthdd (TODO: I should remove this comment at the end)
-def extract_story_units(main_data, main_unit, args):
-    stories_events = {}
+########## New clean method (TODO: I should remove this comment at the end)
+def extract_story_units(main_data, main_units, args):
+    all_stories_events = {}
+
     for index in tqdm(range(len(main_data))):
-        sample_unit = main_unit[index]
+        sample_unit = main_units[index]
         base_unit = sample_unit["base"]
 
         target_keys = sorted(key for key in sample_unit if key.startswith("target"))
 
         for target_key in target_keys:
             target_unit = sample_unit[target_key]
-            stories_events = get_pairs_update(get_all_possible_pairs_map(base_unit, target_unit), sample_unit, stories_events, args)
+            all_stories_events = pairs_update(get_all_possible_pairs_map(base_unit, target_unit), sample_unit, all_stories_events, args)
 
-    return stories_events
+    return all_stories_events
+
+def get_correct_answer(main_data, index, args):
+    if args.dataset == "ARN":
+        row = main_data.iloc[index]
+        correct_answer = int(row["correct_answer"]) - 1
+        category = f'{row["distractor_similarity"]}-{row["analogy_level"]}'
+
+    elif args.dataset == "MCQ":
+        correct_answer = int(main_data[index]["answer"])
+        category = ""
+
+    else:
+        raise ValueError(f"Unsupported dataset: {args.dataset}")
+
+    return correct_answer, category
 
 
 def Greedy_mapping(main_data, main_units, embedding_model, args):
-    return "-"
+
+    all_stories_events = extract_story_units(main_data, main_units, args)
+    unique_values = list(dict.fromkeys(chain.from_iterable(all_stories_events.values())))
+    embedding_dicts = build_embedding_cache(embedding_model, unique_values)
+
+
+    y_true = []
+    y_pred = []
+    category_dict_ref = {'low-near': 294, 'low-far': 294, 'high-near': 253, 'high-far': 254}
+    category_dict = {'low-near': 0, 'low-far': 0, 'high-near': 0, 'high-far': 0}
+
+    for index in tqdm(range(len(main_data))):
+        sample_unit = main_units[index]
+        base_unit = sample_unit["base"]
+
+        correct_answer, category = get_correct_answer(main_data, index, args)
+        y_true.append(correct_answer)
+
+        target_keys = sorted(key for key in sample_unit if key.startswith("target"))
+
+        total_scores = []
+
+        for target_key in target_keys:
+            target_unit = sample_unit[target_key]
+
+            current_maps = generate_local_mappings(get_all_possible_pairs_map(base_unit, target_unit), all_stories_events, embedding_dicts, main_unitsو args)
+            current_final_solutions = beam_search(base_unit, target_unit, current_maps, args.config["top_output"])
+            current_max_score, current_total_score = compute_max_and_total_scores(current_final_solutions)
+
+            total_scores.append(current_total_score)
+                
+
+        max_index = random.choice([i for i, val in enumerate(total_scores) if val == max(total_scores)])
+        y_pred.append(max_index)
+
+        if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
+            category_dict[category] += 1
+        
+    result = round(metrics.accuracy_score(y_true, y_pred), 3)
+
+    if args.dataset == "ARN":
+        for key in category_dict:
+            category_dict[key] = round(category_dict[key]/category_dict_ref[key], 3)
+        return result, category_dict 
+    elif args.dataset == "MCQ":
+        return result, "-"
+            
+
 
 
 

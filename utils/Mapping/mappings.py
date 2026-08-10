@@ -341,28 +341,61 @@ def prepare_units_for_scoring(given_units, all_units, args):
         # TODO: handle abstraction-based units here.
         final_units = list(given_units)
 
-    return format_units_for_scoring(final_units, args)
+    return final_units
 
 
 def score_pair(pair, all_units, args):
     final_units = prepare_units_for_scoring(pair, all_units, args)
-    return generate_scores_sent(final_units, args)
+    return format_units_for_scoring(final_units, args)
 
 
-def get_pairs_update(available_maps, units, args, all_stories_events): 
+def pairs_update(available_maps, units, args, stories_events): 
     # This function is the main function to loop over the mappings
-    result_stories_events = dict(all_stories_events)
+    result_stories_events = dict(stories_events)
     for mapping in available_maps:
         for direction in mapping:
             b1, b2 = direction[0]
             t1, t2 = direction[1]
 
+            base_updated_pairs = score_pair([b1, b2], units, args)
+            target_updated_pairs = score_pair([t1, t2], units, args)
+
             if f"{b1}#{b2}" not in result_stories_events:
-                result_stories_events[f"{b1}#{b2}"] = score_pair([b1, b2], units, args)
+                result_stories_events[f"{b1}#{b2}"] = base_updated_pairs
             if f"{t1}#{t2}" not in result_stories_events:
-                result_stories_events[f"{t1}#{t2}"] = score_pair([t1, t2], units, args)
+                result_stories_events[f"{t1}#{t2}"] = target_updated_pairs
 
     return result_stories_events
+
+def generate_local_mappings(available_maps, all_stories_events, embedding_dicts, units, args):
+    results = []
+    for mapping in available_maps:
+        total_score = 0
+        coverage = 0
+        for direction in mapping:
+            b1, b2 = direction[0]
+            t1, t2 = direction[1]
+
+            base_values_arr = all_stories_events[f"{b1}#{b2}"]
+            target_values_arr = all_stories_events[f"{t1}#{t2}"]
+
+            B = np.stack([embedding_dicts[x] for x in base_values_arr])
+            T = np.stack([embedding_dicts[x] for x in target_values_arr])
+
+            n = min(B.shape[0], T.shape[0])
+            score = float(np.mean(np.sum(B[:n] * T[:n], axis=1)))
+
+            total_score += score
+            coverage += 1
+
+        results.append({
+            "best_mapping": mapping[0],
+            "best_score": round(total_score, 3),
+            "coverage": coverage
+        })
+
+    results.sort(key=lambda x: x["best_score"], reverse=True)
+    return results
 
 def final_mahalanobis_similarity(B, T, mu, VI):
     B = np.asarray(B, dtype=np.float64)
@@ -382,79 +415,79 @@ def safe_int(enrichments, i_position, key, default=100):
     except Exception:
         return default
 
-def generate_local_mappings(available_maps, all_stories_events, embedding_dicts, mu, VI, args, enrichments):
-    results = []
-    for mapping in available_maps:
-        total_score = 0
-        coverage = 0
-        for direction in mapping:
-            b1, b2 = direction[0]
-            t1, t2 = direction[1]
+# def generate_local_mappings(available_maps, all_stories_events, embedding_dicts, mu, VI, args, enrichments):
+#     results = []
+#     for mapping in available_maps:
+#         total_score = 0
+#         coverage = 0
+#         for direction in mapping:
+#             b1, b2 = direction[0]
+#             t1, t2 = direction[1]
 
-            if (args.scoring_constraint == "hard") and ("abstraction" in args.enrichment or "stage" in args.enrichment or "superunit" in args.enrichment):
-                # b1_pos = safe_int(enrichments, 0, b1)
-                # b2_pos = safe_int(enrichments, 0, b2)
-                # t1_pos = safe_int(enrichments, 1, t1)
-                # t2_pos = safe_int(enrichments, 1, t2)
+#             if (args.scoring_constraint == "hard") and ("abstraction" in args.enrichment or "stage" in args.enrichment or "superunit" in args.enrichment):
+#                 # b1_pos = safe_int(enrichments, 0, b1)
+#                 # b2_pos = safe_int(enrichments, 0, b2)
+#                 # t1_pos = safe_int(enrichments, 1, t1)
+#                 # t2_pos = safe_int(enrichments, 1, t2)
 
-                # if (b1_pos < b2_pos and t1_pos > t2_pos) or (b1_pos > b2_pos and t1_pos < t2_pos):
-                #     total_score += 0
-                #     coverage += 1
-                #     continue 
+#                 # if (b1_pos < b2_pos and t1_pos > t2_pos) or (b1_pos > b2_pos and t1_pos < t2_pos):
+#                 #     total_score += 0
+#                 #     coverage += 1
+#                 #     continue 
 
-                b1_pos = enrichments[0].get(b1, "").strip()
-                b2_pos = enrichments[0].get(b2, "").strip()
-                t1_pos = enrichments[1].get(t1, "").strip()
-                t2_pos = enrichments[1].get(t2, "").strip()
-
-
+#                 b1_pos = enrichments[0].get(b1, "").strip()
+#                 b2_pos = enrichments[0].get(b2, "").strip()
+#                 t1_pos = enrichments[1].get(t1, "").strip()
+#                 t2_pos = enrichments[1].get(t2, "").strip()
 
 
-                if b1_pos != t1_pos or b2_pos != t2_pos:
-                    continue
+
+
+#                 if b1_pos != t1_pos or b2_pos != t2_pos:
+#                     continue
 
                 
 
 
-            base_values_arr = all_stories_events[f"{b1}#{b2}"]
-            target_values_arr = all_stories_events[f"{t1}#{t2}"]
+#             base_values_arr = all_stories_events[f"{b1}#{b2}"]
+#             target_values_arr = all_stories_events[f"{t1}#{t2}"]
 
 
-            B = np.stack([embedding_dicts[x] for x in base_values_arr])
-            T = np.stack([embedding_dicts[x] for x in target_values_arr])
+#             B = np.stack([embedding_dicts[x] for x in base_values_arr])
+#             T = np.stack([embedding_dicts[x] for x in target_values_arr])
 
-            if args.scoring_constraint == "mahalanobis":
-                score = final_mahalanobis_similarity(B, T, mu, VI)
-            else:
-                th12 = 0.1
-                if "condition" in args.scoring_constraint:
-                    if np.all([np.sum(B[0] * T[0]) > th12, np.sum(B[2] * T[2]) > th12]):
-                        score = float(np.mean(np.sum(B[[1, 3]] * T[[1, 3]], axis=1)))
-                    else:
-                        score = 0.0
+#             if args.scoring_constraint == "mahalanobis":
+#                 score = final_mahalanobis_similarity(B, T, mu, VI)
+#             else:
+#                 th12 = 0.1
+#                 if "condition" in args.scoring_constraint:
+#                     if np.all([np.sum(B[0] * T[0]) > th12, np.sum(B[2] * T[2]) > th12]):
+#                         score = float(np.mean(np.sum(B[[1, 3]] * T[[1, 3]], axis=1)))
+#                     else:
+#                         score = 0.0
 
-                    # if np.all([np.sum(B[1] * T[1]) > th12, np.sum(B[3] * T[3]) > th12]):
-                    #     # score = float(np.mean(np.sum(B * T, axis=1)))
-                    #     score = float(np.average(np.sum(B * T, axis=1), weights=[1, 2, 1, 2]))
-                    # else:
-                    #     score = 0.0
-                else:
-                    n = min(B.shape[0], T.shape[0])
-                    score = float(np.mean(np.sum(B[:n] * T[:n], axis=1)))
-                    #score = float(np.mean(np.sum(B * T, axis=1)))
+#                     # if np.all([np.sum(B[1] * T[1]) > th12, np.sum(B[3] * T[3]) > th12]):
+#                     #     # score = float(np.mean(np.sum(B * T, axis=1)))
+#                     #     score = float(np.average(np.sum(B * T, axis=1), weights=[1, 2, 1, 2]))
+#                     # else:
+#                     #     score = 0.0
+#                 else:
+#                     n = min(B.shape[0], T.shape[0])
+#                     score = float(np.mean(np.sum(B[:n] * T[:n], axis=1)))
+#                     #score = float(np.mean(np.sum(B * T, axis=1)))
 
 
-            total_score += score
-            coverage += 1
+#             total_score += score
+#             coverage += 1
 
-        results.append({
-            "best_mapping": mapping[0],
-            "best_score": round(total_score, 3),
-            "coverage": coverage
-        })
+#         results.append({
+#             "best_mapping": mapping[0],
+#             "best_score": round(total_score, 3),
+#             "coverage": coverage
+#         })
 
-    results.sort(key=lambda x: x["best_score"], reverse=True)
-    return results
+#     results.sort(key=lambda x: x["best_score"], reverse=True)
+#     return results
 
 
 def get_best_pair_mapping_for_current_iteration(available_maps, all_results, depth):
