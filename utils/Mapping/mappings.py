@@ -325,11 +325,19 @@ def get_best_pair_mapping(embedding_model, available_maps, args, all_enrichment,
 
 #         return generate_scores_sent(args, units1)    
 
-
 def format_units_for_scoring(units, args):
     # Modify unit text before scoring.
     # Example: remove underscores, normalize casing, etc.
-    return units
+    if "text_modify" not in args.config:
+        return units
+    elif args.config["text_modify"] == "split":
+        final_units = [v.replace("_", " ").lower() for v in units]
+        new_units = [v for v1 in final_units for v in v1.split()[:2]]
+        return new_units
+    elif args.config["text_modify"] == "only_root":
+        final_units = [v.replace("_", " ").lower() for v in units]
+        new_units = [v.split()[1] if len(v.split()) > 1 else v for v in final_units]
+        return new_units
 
 
 def prepare_units_for_scoring(given_units, all_units, args):
@@ -337,9 +345,8 @@ def prepare_units_for_scoring(given_units, all_units, args):
     # Example: for soft scoring, add related abstraction units.
     if args.unit == "events":
         final_units = list(given_units)
-    else:
-        # TODO: handle abstraction-based units here.
-        final_units = list(given_units)
+    elif args.unit == "conceptual0":
+        final_units = [all_units.get(u, u) for u in given_units]
 
     return final_units
 
@@ -357,8 +364,8 @@ def pairs_update(available_maps, units, stories_events, args):
             b1, b2 = direction[0]
             t1, t2 = direction[1]
 
-            base_updated_pairs = score_pair([b1, b2], units, args)
-            target_updated_pairs = score_pair([t1, t2], units, args)
+            base_updated_pairs = score_pair([b1, b2], units[0], args)
+            target_updated_pairs = score_pair([t1, t2], units[1], args)
 
             if f"{b1}#{b2}" not in result_stories_events:
                 result_stories_events[f"{b1}#{b2}"] = base_updated_pairs

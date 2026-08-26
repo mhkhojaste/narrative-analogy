@@ -1,23 +1,13 @@
 import json
 import numpy as np
 import os
-
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1,2"
-
-# os.environ['TRANSFORMERS_CACHE'] = "../../../cache"
-# os.environ['HF_HOME'] = "../../../cache"
-
-
-
 import time
 import openai
 import base64
 import requests
-# import ollama
+import pandas as pd
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from vllm import LLM, SamplingParams
-
 import torch
 
 ## Define dicts
@@ -26,7 +16,9 @@ task_abstraction_short = {"timeline_extraction": "timeline", "conceptual_abstrac
         "evaluative_abstraction": "evaluative", "arc_abstraction": "arc","stage_abstraction": "stage"}
 
 
-
+RESULTS_DIR = "results/"
+os.makedirs(RESULTS_DIR, exist_ok=True)
+RESULTS_PATH = RESULTS_DIR + "results.csv"
 
 ## Functions
 def read_json_file(file_path):
@@ -389,3 +381,70 @@ def gpu_analysis(prompts):
         print(f"Max batch total: {max_batch} tokens")
 
     print("prompt_lengths: ", prompt_lengths)
+
+def ensure_results_sheet_exists():
+    if not os.path.exists(RESULTS_PATH):
+        print("[INFO] Creating new results sheet...")
+        columns = [
+            "id", "model", "unit", "scoring_method", 
+            "global_map", "config",
+            "MCQ accuracy", "ARN accuracy", 
+            "arn low-near", "arn low-far", "arn high-near", "arn high-far"
+        ]
+        df = pd.DataFrame(columns=columns)
+        df.to_csv(RESULTS_PATH, index=False)
+
+def append_results(args, accuracy, arn_array=None):
+    ensure_results_sheet_exists()
+    df = pd.read_csv(RESULTS_PATH)
+
+    # Check if this version already exists
+    existing_row = df[df["id"] == args.config["version"]]
+
+    if existing_row.empty:
+        # No existing row with this version
+        new_id = args.config["version"]
+        new_row = {
+            "id": new_id,
+            "model": args.model,
+            "unit": args.unit,
+            "scoring_method": args.scoring_method,
+            "global_map": args.global_map,
+            "config": args.config,
+            "MCQ accuracy": None,
+            "ARN accuracy": None,
+            "arn low-near": None,
+            "arn low-far": None,
+            "arn high-near": None,
+            "arn high-far": None
+        }
+
+        if "MCQ"in args.dataset:
+            new_row["MCQ accuracy"] = accuracy
+        elif "ARN"in args.dataset:
+            new_row["ARN accuracy"] = accuracy
+            if arn_array:
+                new_row["arn low-near"] = arn_array["low-near"]
+                new_row["arn low-far"] = arn_array["low-far"]
+                new_row["arn high-near"] = arn_array["high-near"]
+                new_row["arn high-far"] = arn_array["high-far"]
+
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        print(f"[INFO] New version added under ID {new_id}")
+
+    else:
+        # Row already exists; update it
+        idx = existing_row.index[0]
+        if "MCQ"in args.dataset:
+            df.at[idx, "MCQ accuracy"] = accuracy
+            print(f"[INFO] MCQ accuracy updated for version {args.config['version']}")
+        elif "ARN"in args.dataset:
+            df.at[idx, "ARN accuracy"] = accuracy
+            if arn_array:
+                df.at[idx, "arn low-near"] = arn_array["low-near"]
+                df.at[idx, "arn low-far"] = arn_array["low-far"]
+                df.at[idx, "arn high-near"] = arn_array["high-near"]
+                df.at[idx, "arn high-far"] = arn_array["high-far"]
+            print(f"[INFO] ARN accuracy and categories updated for version {args.config['version']}")
+
+    df.to_csv(RESULTS_PATH, index=False)

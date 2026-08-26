@@ -159,131 +159,7 @@ def best_mapping_by_tp_variable_fast(base_dict, target_dict, model, alpha=1.0, b
 
     return best_b_sub, best_t_sub, best_detail
 
-
-def ensure_results_sheet_exists():
-    if not os.path.exists(RESULTS_PATH):
-        print("[INFO] Creating new results sheet...")
-        columns = [
-            "id", "model", "unit", "scoring_method", 
-            "global_map", "config",
-            "MCQ accuracy", "ARN accuracy", 
-            "arn low-near", "arn low-far", "arn high-near", "arn high-far"
-        ]
-        df = pd.DataFrame(columns=columns)
-        df.to_csv(RESULTS_PATH, index=False)
-
-def ensure_expriment_sheet_exists(args):
-    if "ARN" in args.dataset:
-        expriment_name_path = RESULTS_DIR + str(args.version) + "_" + str(args.dataset) + ".csv"
-        if not os.path.exists(expriment_name_path):
-            print("[INFO] Creating the experiment sheet...")
-            columns = ["id", "Base story", "Target 1", "Target 2", "Correct answer", "Mapping base - target1", "Solutions base - target1", "Mapping base - target2", "Solutions base - target2"]
-            df = pd.DataFrame(columns=columns)
-            df.to_csv(expriment_name_path, index=False)
-    else:
-        expriment_name_path = RESULTS_DIR + str(args.version) + "_" + str(args.dataset) + ".csv"
-        if not os.path.exists(expriment_name_path):
-            print("[INFO] Creating the experiment sheet...")
-            columns = ["id", "Base story", "Target 1", "Target 2", "Target 3", "Target 4", "Correct answer", "Mapping base - target1", "Solutions base - target1", "Mapping base - target2", "Solutions base - target2", "Mapping base - target3", "Solutions base - target3", "Mapping base - target4", "Solutions base - target4"]
-            df = pd.DataFrame(columns=columns)
-            df.to_csv(expriment_name_path, index=False)
-        
-        
-def append_results(args, accuracy, arn_array=None):
-    ensure_results_sheet_exists()
-    df = pd.read_csv(RESULTS_PATH)
-
-    # Check if this version already exists
-    existing_row = df[df["id"] == args.config["version"]]
-
-    if existing_row.empty:
-        # No existing row with this version
-        new_id = args.config["version"]
-        new_row = {
-            "id": new_id,
-            "model": args.model,
-            "unit": args.unit,
-            "scoring_method": args.scoring_method,
-            "global_map": args.global_map,
-            "config": args.config,
-            "MCQ accuracy": None,
-            "ARN accuracy": None,
-            "arn low-near": None,
-            "arn low-far": None,
-            "arn high-near": None,
-            "arn high-far": None
-        }
-
-        if "MCQ"in args.dataset:
-            new_row["MCQ accuracy"] = accuracy
-        elif "ARN"in args.dataset:
-            new_row["ARN accuracy"] = accuracy
-            if arn_array:
-                new_row["arn low-near"] = arn_array["low-near"]
-                new_row["arn low-far"] = arn_array["low-far"]
-                new_row["arn high-near"] = arn_array["high-near"]
-                new_row["arn high-far"] = arn_array["high-far"]
-
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        print(f"[INFO] New version added under ID {new_id}")
-
-    else:
-        # Row already exists; update it
-        idx = existing_row.index[0]
-        if "MCQ"in args.dataset:
-            df.at[idx, "MCQ accuracy"] = accuracy
-            print(f"[INFO] MCQ accuracy updated for version {args.config['version']}")
-        elif "ARN"in args.dataset:
-            df.at[idx, "ARN accuracy"] = accuracy
-            if arn_array:
-                df.at[idx, "arn low-near"] = arn_array["low-near"]
-                df.at[idx, "arn low-far"] = arn_array["low-far"]
-                df.at[idx, "arn high-near"] = arn_array["high-near"]
-                df.at[idx, "arn high-far"] = arn_array["high-far"]
-            print(f"[INFO] ARN accuracy and categories updated for version {args.config['version']}")
-
-    df.to_csv(RESULTS_PATH, index=False)
-
     
-def append_experiment(args, id_s, base_story, targets, correct_ans, mappings, sols):
-    ensure_expriment_sheet_exists(args)
-    expriment_name_path = RESULTS_DIR + str(args.version) + "_" + str(args.dataset) + ".csv"
-    df = pd.read_csv(expriment_name_path)
-    
-    if "ARN" in args.dataset:
-        new_row = {
-            "id": str(id_s),
-            "Base story": base_story,
-            "Target 1": targets[0],
-            "Target 2": targets[1],
-            "Correct answer": str(correct_ans),
-            "Mapping base - target1": str([m for m in mappings[0] if m['best_score'] > 0][:10]),
-            "Solutions base - target1": str(sols[0]),
-            "Mapping base - target2": str([m for m in mappings[1] if m['best_score'] > 0][:10]),
-            "Solutions base - target2": str(sols[1])
-        }
-    else:
-        new_row = {
-            "id": str(id_s),
-            "Base story": base_story,
-            "Target 1": targets[0],
-            "Target 2": targets[1],
-            "Target 3": targets[2],
-            "Target 4": targets[3],
-            "Correct answer": str(correct_ans),
-            "Mapping base - target1": str([m for m in mappings[0] if m['best_score'] > 0][:10]),
-            "Solutions base - target1": str(sols[0]),
-            "Mapping base - target2": str([m for m in mappings[1] if m['best_score'] > 0][:10]),
-            "Solutions base - target2": str(sols[1]),
-            "Mapping base - target3": str([m for m in mappings[2] if m['best_score'] > 0][:10]),
-            "Solutions base - target3": str(sols[2]),
-            "Mapping base - target4": str([m for m in mappings[3] if m['best_score'] > 0][:10]),
-            "Solutions base - target4": str(sols[3])
-        }
-        
-    
-    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    df.to_csv(expriment_name_path, index=False)
 
 def get_minimum_score(solutions):
     new_solutions = []
@@ -828,18 +704,23 @@ def mapping_pipeline_MCQ(embedding_model, mcq_data, mcq_event, mcq_enrichment, m
 
 
 ########## New clean method (TODO: I should remove this comment at the end)
+def get_unit_events(unit):
+    """Return event texts regardless of whether unit is a list or dict."""
+    return list(unit.keys()) if isinstance(unit, dict) else list(unit)
+
 def extract_story_units(main_data, main_units, args):
     all_stories_events = {}
 
-    for index in tqdm(range(len(main_data)), desc="extracting unique units"):
+    for index in tqdm(range(len(main_data)), desc="Extracting unique units"):
         sample_unit = main_units[index]
-        base_unit = sample_unit["base"]
 
+        base_unit = get_unit_events(sample_unit["base"])
         target_keys = sorted(key for key in sample_unit if key.startswith("target"))
 
         for target_key in target_keys:
-            target_unit = sample_unit[target_key]
-            all_stories_events = pairs_update(get_all_possible_pairs_map(base_unit, target_unit), sample_unit, all_stories_events, args)
+            target_unit = get_unit_events(sample_unit[target_key])
+
+            all_stories_events = pairs_update(get_all_possible_pairs_map(base_unit, target_unit), [sample_unit["base"], sample_unit[target_key]], all_stories_events, args)
 
     return all_stories_events
 
@@ -873,7 +754,7 @@ def Greedy_mapping(main_data, main_units, embedding_model, args):
 
     for index in tqdm(range(len(main_data)), desc="Mapping process"):
         sample_unit = main_units[index]
-        base_unit = sample_unit["base"]
+        base_unit = get_unit_events(sample_unit["base"])
 
         correct_answer, category = get_correct_answer(main_data, index, args)
         y_true.append(correct_answer)
@@ -883,7 +764,7 @@ def Greedy_mapping(main_data, main_units, embedding_model, args):
         total_scores = []
 
         for target_key in target_keys:
-            target_unit = sample_unit[target_key]
+            target_unit = get_unit_events(sample_unit[target_key])
 
             current_maps = generate_local_mappings(get_all_possible_pairs_map(base_unit, target_unit), all_stories_events, embedding_dicts, main_units, args)
             current_final_solutions = beam_search(base_unit, target_unit, current_maps, args.config["top_output"])
