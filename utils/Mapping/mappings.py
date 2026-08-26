@@ -349,7 +349,7 @@ def score_pair(pair, all_units, args):
     return format_units_for_scoring(final_units, args)
 
 
-def pairs_update(available_maps, units, args, stories_events): 
+def pairs_update(available_maps, units, stories_events, args): 
     # This function is the main function to loop over the mappings
     result_stories_events = dict(stories_events)
     for mapping in available_maps:

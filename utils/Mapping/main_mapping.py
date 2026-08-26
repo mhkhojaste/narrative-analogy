@@ -164,8 +164,8 @@ def ensure_results_sheet_exists():
     if not os.path.exists(RESULTS_PATH):
         print("[INFO] Creating new results sheet...")
         columns = [
-            "id", "version", "model", "unit", "enrichment", 
-            "scoring_unit", "scoring_method", "scoring_constraint", "global_match",
+            "id", "model", "unit", "scoring_method", 
+            "global_map", "config",
             "MCQ accuracy", "ARN accuracy", 
             "arn low-near", "arn low-far", "arn high-near", "arn high-far"
         ]
@@ -194,21 +194,18 @@ def append_results(args, accuracy, arn_array=None):
     df = pd.read_csv(RESULTS_PATH)
 
     # Check if this version already exists
-    existing_row = df[df["version"] == args.version]
+    existing_row = df[df["id"] == args.config["version"]]
 
     if existing_row.empty:
         # No existing row with this version
-        new_id = len(df) + 1
+        new_id = args.config["version"]
         new_row = {
             "id": new_id,
-            "version": args.version,
             "model": args.model,
             "unit": args.unit,
-            "enrichment": args.enrichment,
-            "scoring_unit": args.scoring_unit,
             "scoring_method": args.scoring_method,
-            "scoring_constraint": args.scoring_constraint,
-            "global_match": args.global_match,
+            "global_map": args.global_map,
+            "config": args.config,
             "MCQ accuracy": None,
             "ARN accuracy": None,
             "arn low-near": None,
@@ -235,7 +232,7 @@ def append_results(args, accuracy, arn_array=None):
         idx = existing_row.index[0]
         if "MCQ"in args.dataset:
             df.at[idx, "MCQ accuracy"] = accuracy
-            print(f"[INFO] MCQ accuracy updated for version {args.version}")
+            print(f"[INFO] MCQ accuracy updated for version {args.config['version']}")
         elif "ARN"in args.dataset:
             df.at[idx, "ARN accuracy"] = accuracy
             if arn_array:
@@ -243,7 +240,7 @@ def append_results(args, accuracy, arn_array=None):
                 df.at[idx, "arn low-far"] = arn_array["low-far"]
                 df.at[idx, "arn high-near"] = arn_array["high-near"]
                 df.at[idx, "arn high-far"] = arn_array["high-far"]
-            print(f"[INFO] ARN accuracy and categories updated for version {args.version}")
+            print(f"[INFO] ARN accuracy and categories updated for version {args.config['version']}")
 
     df.to_csv(RESULTS_PATH, index=False)
 
@@ -834,7 +831,7 @@ def mapping_pipeline_MCQ(embedding_model, mcq_data, mcq_event, mcq_enrichment, m
 def extract_story_units(main_data, main_units, args):
     all_stories_events = {}
 
-    for index in tqdm(range(len(main_data))):
+    for index in tqdm(range(len(main_data)), desc="extracting unique units"):
         sample_unit = main_units[index]
         base_unit = sample_unit["base"]
 
@@ -874,7 +871,7 @@ def Greedy_mapping(main_data, main_units, embedding_model, args):
     category_dict_ref = {'low-near': 294, 'low-far': 294, 'high-near': 253, 'high-far': 254}
     category_dict = {'low-near': 0, 'low-far': 0, 'high-near': 0, 'high-far': 0}
 
-    for index in tqdm(range(len(main_data))):
+    for index in tqdm(range(len(main_data)), desc="Mapping process"):
         sample_unit = main_units[index]
         base_unit = sample_unit["base"]
 
@@ -888,7 +885,7 @@ def Greedy_mapping(main_data, main_units, embedding_model, args):
         for target_key in target_keys:
             target_unit = sample_unit[target_key]
 
-            current_maps = generate_local_mappings(get_all_possible_pairs_map(base_unit, target_unit), all_stories_events, embedding_dicts, main_unitsو args)
+            current_maps = generate_local_mappings(get_all_possible_pairs_map(base_unit, target_unit), all_stories_events, embedding_dicts, main_units, args)
             current_final_solutions = beam_search(base_unit, target_unit, current_maps, args.config["top_output"])
             current_max_score, current_total_score = compute_max_and_total_scores(current_final_solutions)
 
@@ -901,11 +898,11 @@ def Greedy_mapping(main_data, main_units, embedding_model, args):
         if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
             category_dict[category] += 1
         
-    result = round(metrics.accuracy_score(y_true, y_pred), 3)
+    result = round(metrics.accuracy_score(y_true, y_pred), 2)
 
     if args.dataset == "ARN":
         for key in category_dict:
-            category_dict[key] = round(category_dict[key]/category_dict_ref[key], 3)
+            category_dict[key] = round(category_dict[key]/category_dict_ref[key], 2)
         return result, category_dict 
     elif args.dataset == "MCQ":
         return result, "-"
@@ -972,17 +969,17 @@ def run_main_mapping(args):
         main_data, main_units = load_data(args)
 
     
-    print(f"\n=== Step 3: Run the mapping with {arg.global_map} mapping and {args.scoring_method} scoring and {arg.config} config")
-    if arg.global_map == "Greedy":
+    print(f"\n=== Step 3: Run the mapping with {args.global_map} mapping and {args.scoring_method} scoring and {args.config} config")
+    if args.global_map == "Greedy":
         accuracy, arn_category_accuracy = Greedy_mapping(main_data, main_units, embedding_model, args)
 
-    elif arg.global_map == "Order":
+    elif args.global_map == "Order":
         accuracy, arn_category_accuracy = 0, 0
 
-    elif arg.global_map == "max_flow":
+    elif args.global_map == "max_flow":
         accuracy, arn_category_accuracy = 0, 0
     
     print("accuracy: ", accuracy)
-    print("arn_category: ", arn_category)
+    print("arn_category: ", arn_category_accuracy)
     
-    append_results(args, accuracy, arn_category)
+    append_results(args, accuracy, arn_category_accuracy)
