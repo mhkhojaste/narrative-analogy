@@ -789,26 +789,6 @@ def Greedy_mapping(main_data, main_units, embedding_model, args):
         return result, "-"
             
 
-
-
-
-def extract_kernel_names_stages(data):
-    result = {}
-    for idx, sections in data.items():
-        result[idx] = {}
-        for section, tps in sections.items():
-            kernel_list = [info['kernel_name'] for info in tps.values()]
-            result[idx][section] = kernel_list
-    return result
-
-def map_kernel_to_tp(data):
-    result = {}
-    for idx, sections in data.items():
-        result[idx] = {}
-        for section, tps in sections.items():
-            kernel_map = {info['kernel_name']: tp for tp, info in tps.items()}
-            result[idx][section] = kernel_map
-    return result
     
 
 def merge_abstraction_units(conceptual_units, evaluative_units):
@@ -861,11 +841,17 @@ def load_data(args):
 
         main_units = merge_abstraction_units(conceptual_units, evaluative_units)
 
+    elif args.unit == "stage_arc":
+        path_units = (f"{PATH_ABSTRACTION}{model_short}events_stage_{data_short}.pkl")
+        with open(path_units, "rb") as f:
+            main_units = pickle.load(f)
+
     else:
         path_units = (f"{PATH_ABSTRACTION}{model_short}events_{args.unit}_{data_short}.pkl")
         with open(path_units, "rb") as f:
             main_units = pickle.load(f)
     
+
     return main_data, main_units
 
 

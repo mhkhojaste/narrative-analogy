@@ -19,3 +19,7 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 18,Llama-3.1-8B-vllm,conceptual0_evaluative,cosine,Greedy,"{'version': 18, 'top_output': 3}",0.39,0.52,0.67,0.48,0.59,0.33
 19,Qwen3-8B-vllm,conceptual0_evaluative,cosine,Greedy,"{'version': 19, 'top_output': 3, 'text_modify': 'split'}",0.35,0.52,0.67,0.51,0.55,0.32
 20,Llama-3.1-8B-vllm,conceptual0_evaluative,cosine,Greedy,"{'version': 20, 'top_output': 3, 'text_modify': 'split'}",0.38,0.52,0.63,0.51,0.59,0.36
+21,Qwen3-8B-vllm,stage,cosine,Greedy,"{'version': 21, 'top_output': 3}",0.29,0.54,0.74,0.47,0.63,0.31
+22,Llama-3.1-8B-vllm,stage,cosine,Greedy,"{'version': 22, 'top_output': 3}",0.25,0.54,0.79,0.43,0.66,0.27
+23,Qwen3-8B-vllm,stage_arc,cosine,Greedy,"{'version': 23, 'top_output': 3}",0.3,0.54,0.67,0.49,0.57,0.39
+24,Llama-3.1-8B-vllm,stage_arc,cosine,Greedy,"{'version': 24, 'top_output': 3}",0.27,0.54,0.71,0.49,0.58,0.36

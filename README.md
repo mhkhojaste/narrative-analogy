@@ -20,6 +20,13 @@ python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "conc
 python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "conceptual1" --scoring_method "cosine" --global_map "Greedy" --config '{"version": 13, "top_output": 3, "text_modify": "split"}'
 
 
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "conceptual0_evaluative" --scoring_method "cosine" --global_map "Greedy" --config '{"version": 15, "top_output": 3, "text_modify": "only_root"}'
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "stage" --scoring_method "cosine" --global_map "Greedy" --config '{"version": 21, "top_output": 3}'
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "stage_arc" --scoring_method "cosine" --global_map "Greedy" --config '{"version": 23, "top_output": 3}'
+
+
 This repository builds *structural maps* for two narratives. It extracts story units, abstracts them to higher-level concepts, groups them into stages and super-units, and finally computes local and global mappings between the narratives. The pipeline also produces scores that indicate how correct each mapping is.
 
 ---

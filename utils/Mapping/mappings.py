@@ -351,6 +351,11 @@ def prepare_units_for_scoring(given_units, all_units, args):
         final_units = [all_units.get(u, u) for u in given_units]
     elif args.unit == "conceptual0_evaluative":
         final_units = [value for u in given_units for value in all_units.get(u, [u])]
+    elif args.unit == "stage":
+        final_units = list(given_units)
+    elif args.unit == "stage_arc":
+        stages_dict_pre = {"TP1" : "Introduction", "TP2" : "Event", "TP3" : "Challenge", "TP4" : "Action", "TP5" : "Conclusion"}
+        final_units = [item for u in given_units for item in (u, stages_dict_pre.get(all_units.get(u, ""), ""))]
 
     return final_units
 
