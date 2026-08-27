@@ -349,6 +349,8 @@ def prepare_units_for_scoring(given_units, all_units, args):
         final_units = [all_units.get(u, u) for u in given_units]
     elif args.unit == "conceptual1":
         final_units = [all_units.get(u, u) for u in given_units]
+    elif args.unit == "conceptual0_evaluative":
+        final_units = [value for u in given_units for value in all_units.get(u, [u])]
 
     return final_units
 

@@ -811,6 +811,24 @@ def map_kernel_to_tp(data):
     return result
     
 
+def merge_abstraction_units(conceptual_units, evaluative_units):
+    merged_units = {}
+
+    for idx, sample in conceptual_units.items():
+        merged_units[idx] = {}
+
+        for field_name, events in sample.items():
+            evaluative_events = evaluative_units.get(idx, {}).get(field_name, {})
+
+            merged_units[idx][field_name] = {
+                event: [
+                    conceptual_value,
+                    evaluative_events.get(event, "")
+                ]
+                for event, conceptual_value in events.items()
+            }
+
+    return merged_units
         
     
 def load_data(args):
@@ -827,15 +845,27 @@ def load_data(args):
     else:
         raise ValueError(f"Unsupported dataset: {args.dataset}")
 
-    path_units = (
-        f"{PATH_UNITS}{model_short}{args.unit}_{data_short}.pkl"
-        if args.unit == "events"
-        else f"{PATH_ABSTRACTION}{model_short}events_{args.unit}_{data_short}.pkl"
-    )
+    if args.unit == "events":
+        path_units = f"{PATH_UNITS}{model_short}events_{data_short}.pkl"
+        with open(path_units, "rb") as f:
+            main_units = pickle.load(f)
 
-    with open(path_units, "rb") as f:
-        main_units = pickle.load(f)
+    elif args.unit == "conceptual0_evaluative":
+        conceptual_path = (f"{PATH_ABSTRACTION}{model_short}events_conceptual0_{data_short}.pkl")
+        evaluative_path = (f"{PATH_ABSTRACTION}{model_short}events_evaluative_{data_short}.pkl")
 
+        with open(conceptual_path, "rb") as f:
+            conceptual_units = pickle.load(f)
+        with open(evaluative_path, "rb") as f:
+            evaluative_units = pickle.load(f)
+
+        main_units = merge_abstraction_units(conceptual_units, evaluative_units)
+
+    else:
+        path_units = (f"{PATH_ABSTRACTION}{model_short}events_{args.unit}_{data_short}.pkl")
+        with open(path_units, "rb") as f:
+            main_units = pickle.load(f)
+    
     return main_data, main_units
 
 
