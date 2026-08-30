@@ -34,4 +34,13 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 33,Llama-3.1-8B-vllm,stage,cosine_modernbert,Greedy,"{'version': 33, 'top_output': 3}",0.26,0.55,0.75,0.47,0.62,0.34
 34,Qwen3-8B-vllm,stage_arc,cosine_modernbert,Greedy,"{'version': 34, 'top_output': 3}",0.31,0.53,0.68,0.5,0.57,0.38
 35,Llama-3.1-8B-vllm,stage_arc,cosine_modernbert,Greedy,"{'version': 35, 'top_output': 3}",0.27,0.53,0.67,0.48,0.58,0.37
-36,Qwen3-8B-vllm,events,mahalanobis,Greedy,"{'version': 36, 'top_output': 2}",0.21,,,,,
+36,Qwen3-8B-vllm,events,mahalanobis,Greedy,"{'version': 36, 'top_output': 2}",0.21,0.52,0.74,0.43,0.59,0.29
+37,Llama-3.1-8B-vllm,events,mahalanobis,Greedy,"{'version': 37, 'top_output': 3}",0.22,0.49,0.74,0.38,0.58,0.23
+38,Qwen3-8B-vllm,conceptual0,mahalanobis,Greedy,"{'version': 38, 'top_output': 3, 'text_modify': 'only_root'}",0.38,0.55,0.66,0.54,0.58,0.37
+39,Llama-3.1-8B-vllm,conceptual0,mahalanobis,Greedy,"{'version': 39, 'top_output': 3, 'text_modify': 'only_root'}",0.37,0.54,0.66,0.51,0.57,0.39
+40,Qwen3-8B-vllm,conceptual0_evaluative,mahalanobis,Greedy,"{'version': 40, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.54,0.61,0.53,0.57,0.43
+41,Llama-3.1-8B-vllm,conceptual0_evaluative,mahalanobis,Greedy,"{'version': 41, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.53,0.63,0.51,0.58,0.38
+42,Qwen3-8B-vllm,stage,mahalanobis,Greedy,"{'version': 42, 'top_output': 3}",0.26,0.51,0.62,0.47,0.57,0.37
+43,Llama-3.1-8B-vllm,stage,mahalanobis,Greedy,"{'version': 43, 'top_output': 3}",0.26,0.5,0.64,0.44,0.57,0.35
+44,Qwen3-8B-vllm,stage_arc,mahalanobis,Greedy,"{'version': 44, 'top_output': 3}",0.27,0.49,0.56,0.46,0.51,0.41
+45,Llama-3.1-8B-vllm,stage_arc,mahalanobis,Greedy,"{'version': 45, 'top_output': 3}",0.27,0.51,0.62,0.47,0.55,0.37
