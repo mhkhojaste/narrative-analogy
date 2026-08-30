@@ -301,31 +301,31 @@ def build_embedding_cache(embedding_model, texts, batch_size=1024, normalize=Tru
 
     return dict(zip(texts, embs))
 
-def fit_mahalanobis_from_dict(embedding_dict, reg=1e-4, use_shrinkage=True):
-    # Stack to (n, d) float64 for stable linear algebra
-    X = np.asarray(np.stack(list(embedding_dict.values()), axis=0), dtype=np.float64)
-    mu = X.mean(axis=0)
-    Xc = X - mu
+# def fit_mahalanobis_from_dict(embedding_dict, reg=1e-4, use_shrinkage=True):
+#     # Stack to (n, d) float64 for stable linear algebra
+#     X = np.asarray(np.stack(list(embedding_dict.values()), axis=0), dtype=np.float64)
+#     mu = X.mean(axis=0)
+#     Xc = X - mu
 
-    if use_shrinkage:
-        try:
-            from sklearn.covariance import LedoitWolf
-            Sigma = LedoitWolf().fit(Xc).covariance_
-            # LW is well-conditioned → inverse (not pinv) is appropriate
-            VI = np.linalg.inv(Sigma)
-        except Exception:
-            # Fallback to sample covariance + ridge + pinv
-            Sigma = np.cov(Xc, rowvar=False, ddof=1)
-            Sigma = Sigma + reg * np.eye(Sigma.shape[0], dtype=Sigma.dtype)
-            VI = np.linalg.pinv(Sigma)
-    else:
-        Sigma = np.cov(Xc, rowvar=False, ddof=1)
-        Sigma = Sigma + reg * np.eye(Sigma.shape[0], dtype=Sigma.dtype)
-        VI = np.linalg.pinv(Sigma)
+#     if use_shrinkage:
+#         try:
+#             from sklearn.covariance import LedoitWolf
+#             Sigma = LedoitWolf().fit(Xc).covariance_
+#             # LW is well-conditioned → inverse (not pinv) is appropriate
+#             VI = np.linalg.inv(Sigma)
+#         except Exception:
+#             # Fallback to sample covariance + ridge + pinv
+#             Sigma = np.cov(Xc, rowvar=False, ddof=1)
+#             Sigma = Sigma + reg * np.eye(Sigma.shape[0], dtype=Sigma.dtype)
+#             VI = np.linalg.pinv(Sigma)
+#     else:
+#         Sigma = np.cov(Xc, rowvar=False, ddof=1)
+#         Sigma = Sigma + reg * np.eye(Sigma.shape[0], dtype=Sigma.dtype)
+#         VI = np.linalg.pinv(Sigma)
 
-    # Symmetrize to remove numerical drift
-    VI = 0.5 * (VI + VI.T)
-    return mu, VI
+#     # Symmetrize to remove numerical drift
+#     VI = 0.5 * (VI + VI.T)
+#     return mu, VI
 
 
 
@@ -739,12 +739,31 @@ def get_correct_answer(main_data, index, args):
 
     return correct_answer, category
 
+def fit_mahalanobis_from_dict(embedding_dict):
+    X = np.asarray(
+        np.stack(list(embedding_dict.values())),
+        dtype=np.float64
+    )
+
+    estimator = LedoitWolf().fit(X)
+
+    # precision_ = inverse covariance matrix
+    return estimator.precision_
+
 
 def Greedy_mapping(main_data, main_units, embedding_model, args):
 
     all_stories_events = extract_story_units(main_data, main_units, args)
     unique_values = list(dict.fromkeys(chain.from_iterable(all_stories_events.values())))
-    embedding_dicts = build_embedding_cache(embedding_model, unique_values)
+
+    if args.scoring_method == "mahalanobis":
+        embedding_dicts = build_embedding_cache(embedding_model, unique_values, batch_size=1024, normalize=False, to_numpy=True, show_progress=True)
+        VI = fit_mahalanobis_from_dict(embedding_dicts)
+    else:
+        embedding_dicts = build_embedding_cache(embedding_model, unique_values)
+        VI = None
+
+    
 
 
     y_true = []
@@ -766,7 +785,7 @@ def Greedy_mapping(main_data, main_units, embedding_model, args):
         for target_key in target_keys:
             target_unit = get_unit_events(sample_unit[target_key])
 
-            current_maps = generate_local_mappings(get_all_possible_pairs_map(base_unit, target_unit), all_stories_events, embedding_dicts, main_units, args)
+            current_maps = generate_local_mappings(get_all_possible_pairs_map(base_unit, target_unit), all_stories_events, embedding_dicts, main_units, VI, args)
             current_final_solutions = beam_search(base_unit, target_unit, current_maps, args.config["top_output"])
             current_max_score, current_total_score = compute_max_and_total_scores(current_final_solutions)
 
@@ -778,7 +797,8 @@ def Greedy_mapping(main_data, main_units, embedding_model, args):
 
         if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
             category_dict[category] += 1
-        
+    
+
     result = round(metrics.accuracy_score(y_true, y_pred), 2)
 
     if args.dataset == "ARN":
@@ -857,7 +877,7 @@ def load_data(args):
 
 def run_main_mapping(args):
     print("\n=== Step 1: Loading embedding model ===")
-    embedding_model = get_embedding_model()
+    embedding_model = get_embedding_model(args)
     
     print("\n=== Step 2: Loading the Dataset and the Units ===")
     if args.dataset == "ARN":

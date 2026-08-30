@@ -8,11 +8,15 @@ from networkx.algorithms import bipartite
 
 _model_emb = None  
 
-def get_embedding_model():
+def get_embedding_model(args):
     global _model_emb
     if _model_emb is None:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        _model_emb = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+        if args.scoring_method == "cosine_modernbert":
+            _model_emb = SentenceTransformer('Alibaba-NLP/gte-modernbert-base', device=device)
+        else:
+            _model_emb = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+
         # _model_emb = SentenceTransformer('msmarco-distilbert-base-v4', device=device)
     return _model_emb
 
