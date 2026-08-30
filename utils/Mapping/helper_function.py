@@ -1,12 +1,15 @@
 from sentence_transformers import SentenceTransformer, util
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering
-from sentence_transformers import SentenceTransformer
 import torch
 import networkx as nx
 from networkx.algorithms import bipartite
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 _model_emb = None  
+_nli_model = None
+_nli_token = None 
+
 
 def get_embedding_model(args):
     global _model_emb
@@ -19,6 +22,17 @@ def get_embedding_model(args):
 
         # _model_emb = SentenceTransformer('msmarco-distilbert-base-v4', device=device)
     return _model_emb
+
+def get_nli_model():
+    global _nli_model
+    global _nli_token
+
+    if _nli_model is None or _nli_token is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        _nli_token = AutoTokenizer.from_pretrained("roberta-large-mnli")
+        _nli_model = AutoModelForSequenceClassification.from_pretrained("roberta-large-mnli").to(device).eval()
+
+    return _nli_model, _nli_token
 
 def similarity(sentence1, sentence2, model):
     emb1 = model.encode(sentence1, convert_to_tensor=True)

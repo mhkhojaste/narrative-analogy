@@ -44,3 +44,13 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 43,Llama-3.1-8B-vllm,stage,mahalanobis,Greedy,"{'version': 43, 'top_output': 3}",0.26,0.5,0.64,0.44,0.57,0.35
 44,Qwen3-8B-vllm,stage_arc,mahalanobis,Greedy,"{'version': 44, 'top_output': 3}",0.27,0.49,0.56,0.46,0.51,0.41
 45,Llama-3.1-8B-vllm,stage_arc,mahalanobis,Greedy,"{'version': 45, 'top_output': 3}",0.27,0.51,0.62,0.47,0.55,0.37
+46,Qwen3-8B-vllm,events,nli,Greedy,"{'version': 46, 'top_output': 3}",0.14,0.48,0.76,0.32,0.63,0.19
+47,Llama-3.1-8B-vllm,events,nli,Greedy,"{'version': 47, 'top_output': 3}",0.12,0.47,0.73,0.35,0.57,0.2
+48,Qwen3-8B-vllm,conceptual0,nli,Greedy,"{'version': 48, 'top_output': 3, 'text_modify': 'only_root'}",0.4,0.58,0.72,0.51,0.65,0.42
+49,Llama-3.1-8B-vllm,conceptual0,nli,Greedy,"{'version': 49, 'top_output': 3, 'text_modify': 'only_root'}",0.38,0.56,0.67,0.53,0.56,0.45
+50,Qwen3-8B-vllm,conceptual0_evaluative,nli,Greedy,"{'version': 50, 'top_output': 3, 'text_modify': 'only_root'}",0.44,0.56,0.68,0.5,0.6,0.44
+51,Llama-3.1-8B-vllm,conceptual0_evaluative,nli,Greedy,"{'version': 51, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.54,0.63,0.55,0.57,0.41
+52,Qwen3-8B-vllm,stage,nli,Greedy,"{'version': 52, 'top_output': 3}",0.25,0.56,0.68,0.5,0.7,0.37
+53,Llama-3.1-8B-vllm,stage,nli,Greedy,"{'version': 53, 'top_output': 3}",0.25,0.56,0.71,0.46,0.68,0.36
+54,Qwen3-8B-vllm,stage_arc,nli,Greedy,"{'version': 54, 'top_output': 3}",0.26,0.56,0.66,0.52,0.63,0.41
+55,Llama-3.1-8B-vllm,stage_arc,nli,Greedy,"{'version': 55, 'top_output': 3}",0.23,0.56,0.67,0.48,0.66,0.43

@@ -366,9 +366,9 @@ def score_pair(pair, all_units, args):
     return format_units_for_scoring(final_units, args)
 
 
-def pairs_update(available_maps, units, stories_events, args): 
-    # This function is the main function to loop over the mappings
+def pairs_update(available_maps, units, stories_events, nli_pairs, args):
     result_stories_events = dict(stories_events)
+
     for mapping in available_maps:
         for direction in mapping:
             b1, b2 = direction[0]
@@ -379,10 +379,22 @@ def pairs_update(available_maps, units, stories_events, args):
 
             if f"{b1}#{b2}" not in result_stories_events:
                 result_stories_events[f"{b1}#{b2}"] = base_updated_pairs
+
             if f"{t1}#{t2}" not in result_stories_events:
                 result_stories_events[f"{t1}#{t2}"] = target_updated_pairs
 
-    return result_stories_events
+            base_values = result_stories_events[f"{b1}#{b2}"]
+            target_values = result_stories_events[f"{t1}#{t2}"]
+
+            n = min(len(base_values), len(target_values))
+
+            for i_n in range(n):
+                nli_pairs.append((
+                    base_values[i_n],
+                    target_values[i_n]
+                ))
+
+    return result_stories_events, nli_pairs
 
 
 
@@ -404,7 +416,7 @@ def final_mahalanobis_similarity(B, T, VI, bandwidth=25.0):
 
     return float(np.mean(similarities))
 
-def generate_local_mappings(available_maps, all_stories_events, embedding_dicts, units, VI, args):
+def generate_local_mappings(available_maps, all_stories_events, embedding_dicts, units, VI, nli_cache, args):
     results = []
     for mapping in available_maps:
         total_score = 0
@@ -421,6 +433,21 @@ def generate_local_mappings(available_maps, all_stories_events, embedding_dicts,
 
             if args.scoring_method == "mahalanobis":
                 score = final_mahalanobis_similarity(B, T, VI)
+            elif args.scoring_method == "nli":
+                n = min(B.shape[0], T.shape[0])
+                scores = []
+
+                for i_n in range(n):
+                    p_contra, p_neutral, p_ent = nli_cache[
+                        (base_values_arr[i_n], target_values_arr[i_n])
+                    ]
+
+                    raw_cosine = float(np.dot(B[i_n], T[i_n]))
+                    soft_sign = p_ent + p_neutral - p_contra
+
+                    scores.append(raw_cosine * soft_sign)
+
+                score = float(np.min(scores)) if scores else -10.0
             else:
                 n = min(B.shape[0], T.shape[0])
                 score = float(np.mean(np.sum(B[:n] * T[:n], axis=1)))

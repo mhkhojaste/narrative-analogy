@@ -704,12 +704,50 @@ def mapping_pipeline_MCQ(embedding_model, mcq_data, mcq_event, mcq_enrichment, m
 
 
 ########## New clean method (TODO: I should remove this comment at the end)
+def build_nli_cache(pairs, tok, nli, batch_size=256):
+    cache = {}
+    device = next(nli.parameters()).device
+
+    expanded_pairs = []
+
+    for a, b in pairs:
+        expanded_pairs.append((a, b))
+        expanded_pairs.append((b, a))
+
+    expanded_pairs = list(dict.fromkeys(expanded_pairs))
+
+    for start in tqdm(range(0, len(expanded_pairs), batch_size), desc="Building NLI cache"):
+        batch = expanded_pairs[start:start + batch_size]
+
+        premises = [a for a, b in batch]
+        hypotheses = [b for a, b in batch]
+
+        inputs = tok(
+            premises,
+            hypotheses,
+            return_tensors="pt",
+            padding=True,
+            truncation=True
+        ).to(device)
+
+        with torch.no_grad():
+            probs = torch.softmax(
+                nli(**inputs).logits,
+                dim=-1
+            )
+
+        for pair, prob in zip(batch, probs):
+            cache[pair] = tuple(prob.tolist())
+
+    return cache
+
 def get_unit_events(unit):
     """Return event texts regardless of whether unit is a list or dict."""
     return list(unit.keys()) if isinstance(unit, dict) else list(unit)
 
 def extract_story_units(main_data, main_units, args):
     all_stories_events = {}
+    nli_pairs = []
 
     for index in tqdm(range(len(main_data)), desc="Extracting unique units"):
         sample_unit = main_units[index]
@@ -720,9 +758,9 @@ def extract_story_units(main_data, main_units, args):
         for target_key in target_keys:
             target_unit = get_unit_events(sample_unit[target_key])
 
-            all_stories_events = pairs_update(get_all_possible_pairs_map(base_unit, target_unit), [sample_unit["base"], sample_unit[target_key]], all_stories_events, args)
+            all_stories_events, nli_pairs = pairs_update(get_all_possible_pairs_map(base_unit, target_unit), [sample_unit["base"], sample_unit[target_key]], all_stories_events, nli_pairs, args)
 
-    return all_stories_events
+    return all_stories_events, nli_pairs
 
 def get_correct_answer(main_data, index, args):
     if args.dataset == "ARN":
@@ -751,17 +789,25 @@ def fit_mahalanobis_from_dict(embedding_dict):
     return estimator.precision_
 
 
-def Greedy_mapping(main_data, main_units, embedding_model, args):
+def Greedy_mapping(main_data, main_units, embedding_model, nli_model, nli_token, args):
 
-    all_stories_events = extract_story_units(main_data, main_units, args)
+    all_stories_events, nli_pairs = extract_story_units(main_data, main_units, args)
     unique_values = list(dict.fromkeys(chain.from_iterable(all_stories_events.values())))
 
     if args.scoring_method == "mahalanobis":
         embedding_dicts = build_embedding_cache(embedding_model, unique_values, batch_size=1024, normalize=False, to_numpy=True, show_progress=True)
         VI = fit_mahalanobis_from_dict(embedding_dicts)
+        nli_cache = None
+    elif args.scoring_method == "nli":
+        embedding_dicts = build_embedding_cache(embedding_model, unique_values)
+        VI = None
+        nli_pairs = list(dict.fromkeys(nli_pairs))
+        nli_cache = build_nli_cache(nli_pairs, nli_token, nli_model)
+
     else:
         embedding_dicts = build_embedding_cache(embedding_model, unique_values)
         VI = None
+        nli_cache = None
 
     
 
@@ -785,7 +831,7 @@ def Greedy_mapping(main_data, main_units, embedding_model, args):
         for target_key in target_keys:
             target_unit = get_unit_events(sample_unit[target_key])
 
-            current_maps = generate_local_mappings(get_all_possible_pairs_map(base_unit, target_unit), all_stories_events, embedding_dicts, main_units, VI, args)
+            current_maps = generate_local_mappings(get_all_possible_pairs_map(base_unit, target_unit), all_stories_events, embedding_dicts, main_units, VI, nli_cache, args)
             current_final_solutions = beam_search(base_unit, target_unit, current_maps, args.config["top_output"])
             current_max_score, current_total_score = compute_max_and_total_scores(current_final_solutions)
 
@@ -878,6 +924,7 @@ def load_data(args):
 def run_main_mapping(args):
     print("\n=== Step 1: Loading embedding model ===")
     embedding_model = get_embedding_model(args)
+    nli_model, nli_token = get_nli_model()
     
     print("\n=== Step 2: Loading the Dataset and the Units ===")
     if args.dataset == "ARN":
@@ -888,7 +935,7 @@ def run_main_mapping(args):
     
     print(f"\n=== Step 3: Run the mapping with {args.global_map} mapping and {args.scoring_method} scoring and {args.config} config")
     if args.global_map == "Greedy":
-        accuracy, arn_category_accuracy = Greedy_mapping(main_data, main_units, embedding_model, args)
+        accuracy, arn_category_accuracy = Greedy_mapping(main_data, main_units, embedding_model, nli_model, nli_token, args)
 
     elif args.global_map == "Order":
         accuracy, arn_category_accuracy = 0, 0
