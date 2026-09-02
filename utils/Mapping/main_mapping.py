@@ -757,7 +757,6 @@ def extract_story_units(main_data, main_units, args):
 
         for target_key in target_keys:
             target_unit = get_unit_events(sample_unit[target_key])
-
             all_stories_events, nli_pairs = pairs_update(get_all_possible_pairs_map(base_unit, target_unit), [sample_unit["base"], sample_unit[target_key]], all_stories_events, nli_pairs, args)
 
     return all_stories_events, nli_pairs
@@ -853,8 +852,131 @@ def Greedy_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
         return result, category_dict 
     elif args.dataset == "MCQ":
         return result, "-"
-            
 
+
+def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token, args):
+
+    all_stories_events, nli_pairs = extract_story_units(main_data, main_units, args)
+    unique_values = list(dict.fromkeys(chain.from_iterable(all_stories_events.values())))
+
+    if args.scoring_method == "mahalanobis":
+        embedding_dicts = build_embedding_cache(embedding_model, unique_values, batch_size=1024, normalize=False, to_numpy=True, show_progress=True)
+        VI = fit_mahalanobis_from_dict(embedding_dicts)
+        nli_cache = None
+
+    elif args.scoring_method == "nli":
+        embedding_dicts = build_embedding_cache(embedding_model, unique_values)
+        VI = None
+        nli_pairs = list(dict.fromkeys(nli_pairs))
+        nli_cache = build_nli_cache(nli_pairs, nli_token, nli_model)
+
+    else:
+        embedding_dicts = build_embedding_cache(embedding_model, unique_values)
+        VI = None
+        nli_cache = None
+
+    y_true = []
+    y_pred = []
+
+    category_dict_ref = {"low-near": 294, "low-far": 294, "high-near": 253, "high-far": 254}
+    category_dict = {"low-near": 0, "low-far": 0, "high-near": 0, "high-far": 0}
+
+    for index in tqdm(range(len(main_data)), desc="Linear positional mapping"):
+
+        sample_unit = main_units[index]
+        base_unit = list(get_unit_events(sample_unit["base"]))
+
+        correct_answer, category = get_correct_answer(main_data, index, args)
+        y_true.append(correct_answer)
+
+        target_keys = sorted(key for key in sample_unit if key.startswith("target"))
+        total_scores = []
+
+        for target_key in target_keys:
+
+            target_unit = list(get_unit_events(sample_unit[target_key]))
+            number_of_mappings = min(len(base_unit), len(target_unit))
+
+            if number_of_mappings == 0:
+                total_scores.append(-10.0)
+                continue
+
+            mapping_scores = []
+            for position in range(number_of_mappings):
+
+                base_event = base_unit[position]
+                target_event = target_unit[position]
+
+                base_values = score_pair([base_event], sample_unit["base"], args)
+                target_values = score_pair([target_event], sample_unit[target_key], args)
+
+                number_of_values = min(len(base_values), len(target_values))
+
+                if number_of_values == 0:
+                    mapping_scores.append(-10.0)
+                    continue
+
+                base_values = base_values[:number_of_values]
+                target_values = target_values[:number_of_values]
+
+                missing_values = list(dict.fromkeys([value for value in base_values + target_values if value not in embedding_dicts]))
+                if missing_values:
+                    normalize_missing = args.scoring_method != "mahalanobis"
+                    missing_embeddings = embedding_model.encode(missing_values, normalize_embeddings=normalize_missing, convert_to_numpy=True, show_progress_bar=False)
+                    embedding_dicts.update(dict(zip(missing_values, missing_embeddings)))
+
+                B_local = np.stack([embedding_dicts[value] for value in base_values])
+                T_local = np.stack([embedding_dicts[value] for value in target_values])
+
+                if args.scoring_method == "mahalanobis":
+                    local_score = final_mahalanobis_similarity(B_local, T_local, VI)
+
+                elif args.scoring_method == "nli":
+                    nli_scores = []
+
+                    for value_index in range(number_of_values):
+
+                        base_value = base_values[value_index]
+                        target_value = target_values[value_index]
+                        pair = (base_value, target_value)
+
+                        if pair not in nli_cache:
+                            new_nli_cache = build_nli_cache([pair], nli_token, nli_model, batch_size=1)
+                            nli_cache.update(new_nli_cache)
+
+                        p_contra, p_neutral, p_ent = nli_cache[pair]
+                        raw_cosine = float(np.dot(B_local[value_index], T_local[value_index]))
+                        soft_sign = p_ent + p_neutral - p_contra
+                        nli_score = raw_cosine * soft_sign
+
+                        nli_scores.append(nli_score)
+
+                    local_score = float(np.min(nli_scores)) if nli_scores else -10.0
+
+                else:
+                    local_score = float(np.mean(np.sum(B_local * T_local, axis=1)))
+
+                mapping_scores.append(local_score)
+
+
+            current_total_score = float(np.mean(mapping_scores)) if mapping_scores else -10.0
+            total_scores.append(current_total_score)
+
+        max_index = random.choice([i for i, val in enumerate(total_scores) if val == max(total_scores)])
+        y_pred.append(max_index)
+
+        if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
+            category_dict[category] += 1
+
+
+    result = round(metrics.accuracy_score(y_true, y_pred), 2)
+
+    if args.dataset == "ARN":
+        for key in category_dict:
+            category_dict[key] = round(category_dict[key]/category_dict_ref[key], 2)
+        return result, category_dict 
+    elif args.dataset == "MCQ":
+        return result, "-"
     
 
 def merge_abstraction_units(conceptual_units, evaluative_units):
@@ -937,8 +1059,8 @@ def run_main_mapping(args):
     if args.global_map == "Greedy":
         accuracy, arn_category_accuracy = Greedy_mapping(main_data, main_units, embedding_model, nli_model, nli_token, args)
 
-    elif args.global_map == "Order":
-        accuracy, arn_category_accuracy = 0, 0
+    elif args.global_map == "Linear":
+        accuracy, arn_category_accuracy = Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token, args)
 
     elif args.global_map == "max_flow":
         accuracy, arn_category_accuracy = 0, 0
