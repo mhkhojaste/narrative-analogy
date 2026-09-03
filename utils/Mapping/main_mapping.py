@@ -886,22 +886,34 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
         sample_unit = main_units[index]
         base_unit = list(get_unit_events(sample_unit["base"]))
 
+        assert len(base_unit) > 0, f"Empty base story at sample {index}"
+
         correct_answer, category = get_correct_answer(main_data, index, args)
         y_true.append(correct_answer)
 
-        target_keys = sorted(key for key in sample_unit if key.startswith("target"))
+        target_keys = sorted((key for key in sample_unit if key.startswith("target")), key=lambda key: int(key.replace("target", "")))
+
+        assert len(target_keys) > 0, f"No target stories at sample {index}"
+        assert 0 <= correct_answer < len(target_keys), f"Invalid answer {correct_answer} at sample {index}"
+
         total_scores = []
 
         for target_key in target_keys:
 
             target_unit = list(get_unit_events(sample_unit[target_key]))
+
+            assert len(target_unit) > 0, f"Empty {target_key} at sample {index}"
+
             number_of_mappings = min(len(base_unit), len(target_unit))
+
+            assert number_of_mappings > 0, f"No mapping at sample {index}, target {target_key}"
 
             if number_of_mappings == 0:
                 total_scores.append(-10.0)
                 continue
 
             mapping_scores = []
+
             for position in range(number_of_mappings):
 
                 base_event = base_unit[position]
@@ -909,6 +921,14 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
 
                 base_values = score_pair([base_event], sample_unit["base"], args)
                 target_values = score_pair([target_event], sample_unit[target_key], args)
+
+                assert base_values is not None, f"score_pair returned None for base event '{base_event}' at sample {index}"
+                assert target_values is not None, f"score_pair returned None for target event '{target_event}' at sample {index}"
+                assert len(base_values) > 0, f"No scoring units for base event '{base_event}' at sample {index}"
+                assert len(target_values) > 0, f"No scoring units for target event '{target_event}' at sample {index}"
+
+                if len(base_values) != len(target_values):
+                    print(f"Warning: representation-length mismatch at sample {index}, target {target_key}, position {position}: {len(base_values)} vs {len(target_values)}")
 
                 number_of_values = min(len(base_values), len(target_values))
 
@@ -920,6 +940,7 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
                 target_values = target_values[:number_of_values]
 
                 missing_values = list(dict.fromkeys([value for value in base_values + target_values if value not in embedding_dicts]))
+
                 if missing_values:
                     normalize_missing = args.scoring_method != "mahalanobis"
                     missing_embeddings = embedding_model.encode(missing_values, normalize_embeddings=normalize_missing, convert_to_numpy=True, show_progress_bar=False)
@@ -927,6 +948,9 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
 
                 B_local = np.stack([embedding_dicts[value] for value in base_values])
                 T_local = np.stack([embedding_dicts[value] for value in target_values])
+
+                assert np.all(np.isfinite(B_local)), f"Invalid base embedding at sample {index}, target {target_key}, position {position}"
+                assert np.all(np.isfinite(T_local)), f"Invalid target embedding at sample {index}, target {target_key}, position {position}"
 
                 if args.scoring_method == "mahalanobis":
                     local_score = final_mahalanobis_similarity(B_local, T_local, VI)
@@ -945,9 +969,15 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
                             nli_cache.update(new_nli_cache)
 
                         p_contra, p_neutral, p_ent = nli_cache[pair]
+
+                        assert np.all(np.isfinite([p_contra, p_neutral, p_ent])), f"Invalid NLI probabilities for pair {pair} at sample {index}"
+                        assert np.isclose(p_contra + p_neutral + p_ent, 1.0, atol=1e-4), f"NLI probabilities do not sum to one for pair {pair}"
+
                         raw_cosine = float(np.dot(B_local[value_index], T_local[value_index]))
                         soft_sign = p_ent + p_neutral - p_contra
                         nli_score = raw_cosine * soft_sign
+
+                        assert np.isfinite(nli_score), f"Invalid NLI score for pair {pair} at sample {index}"
 
                         nli_scores.append(nli_score)
 
@@ -956,25 +986,39 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
                 else:
                     local_score = float(np.mean(np.sum(B_local * T_local, axis=1)))
 
+                assert np.isfinite(local_score), f"Invalid local score at sample {index}, target {target_key}, position {position}"
+
                 mapping_scores.append(local_score)
 
-
             current_total_score = float(np.mean(mapping_scores)) if mapping_scores else -10.0
+
+            assert np.isfinite(current_total_score), f"Invalid total score at sample {index}, target {target_key}"
+
             total_scores.append(current_total_score)
 
-        max_index = random.choice([i for i, val in enumerate(total_scores) if val == max(total_scores)])
+        assert len(total_scores) == len(target_keys), f"Missing target scores at sample {index}"
+        assert np.all(np.isfinite(total_scores)), f"Invalid candidate scores at sample {index}"
+
+        max_score = max(total_scores)
+        max_indices = [i for i, value in enumerate(total_scores) if np.isclose(value, max_score)]
+
+        assert len(max_indices) > 0, f"No valid prediction at sample {index}"
+
+        max_index = random.choice(max_indices)
         y_pred.append(max_index)
 
         if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
+            assert category in category_dict, f"Unknown category '{category}' at sample {index}"
             category_dict[category] += 1
-
 
     result = round(metrics.accuracy_score(y_true, y_pred), 2)
 
     if args.dataset == "ARN":
         for key in category_dict:
-            category_dict[key] = round(category_dict[key]/category_dict_ref[key], 2)
-        return result, category_dict 
+            category_dict[key] = round(category_dict[key] / category_dict_ref[key], 2)
+
+        return result, category_dict
+
     elif args.dataset == "MCQ":
         return result, "-"
     

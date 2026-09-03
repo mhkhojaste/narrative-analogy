@@ -74,3 +74,23 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 73,Llama-3.1-8B-vllm,stage,cosine_modernbert,Linear,"{'version': 73, 'top_output': 3}",0.28,0.5,0.72,0.41,0.6,0.23
 74,Qwen3-8B-vllm,stage_arc,cosine_modernbert,Linear,"{'version': 74, 'top_output': 3}",0.28,0.48,0.57,0.48,0.51,0.34
 75,Llama-3.1-8B-vllm,stage_arc,cosine_modernbert,Linear,"{'version': 75, 'top_output': 3}",0.3,0.5,0.61,0.47,0.56,0.37
+76,Qwen3-8B-vllm,events,mahalanobis,Linear,"{'version': 76, 'top_output': 3}",0.14,0.45,0.69,0.34,0.6,0.15
+77,Llama-3.1-8B-vllm,events,mahalanobis,Linear,"{'version': 77, 'top_output': 3}",0.19,0.45,0.67,0.37,0.6,0.17
+78,Qwen3-8B-vllm,conceptual0,mahalanobis,Linear,"{'version': 78, 'top_output': 3, 'text_modify': 'only_root'}",0.4,0.49,0.51,0.46,0.52,0.45
+79,Llama-3.1-8B-vllm,conceptual0,mahalanobis,Linear,"{'version': 79, 'top_output': 3, 'text_modify': 'only_root'}",0.36,0.51,0.58,0.44,0.58,0.45
+80,Qwen3-8B-vllm,conceptual0_evaluative,mahalanobis,Linear,"{'version': 80, 'top_output': 3, 'text_modify': 'only_root'}",0.46,0.51,0.54,0.49,0.54,0.46
+81,Llama-3.1-8B-vllm,conceptual0_evaluative,mahalanobis,Linear,"{'version': 81, 'top_output': 3, 'text_modify': 'only_root'}",0.44,0.54,0.59,0.51,0.58,0.49
+82,Qwen3-8B-vllm,stage,mahalanobis,Linear,"{'version': 82, 'top_output': 3}",0.23,0.48,0.59,0.43,0.58,0.33
+83,Llama-3.1-8B-vllm,stage,mahalanobis,Linear,"{'version': 83, 'top_output': 3}",0.24,0.48,0.63,0.37,0.6,0.3
+84,Qwen3-8B-vllm,stage_arc,mahalanobis,Linear,"{'version': 84, 'top_output': 3}",0.23,0.46,0.49,0.46,0.49,0.39
+85,Llama-3.1-8B-vllm,stage_arc,mahalanobis,Linear,"{'version': 85, 'top_output': 3}",0.27,0.51,0.58,0.44,0.58,0.43
+86,Qwen3-8B-vllm,events,nli,Linear,"{'version': 86, 'top_output': 3}",0.13,0.5,0.67,0.41,0.59,0.3
+87,Llama-3.1-8B-vllm,events,nli,Linear,"{'version': 87, 'top_output': 3}",0.11,0.49,0.63,0.39,0.62,0.3
+88,Qwen3-8B-vllm,conceptual0,nli,Linear,"{'version': 88, 'top_output': 3, 'text_modify': 'only_root'}",0.43,0.55,0.63,0.47,0.61,0.5
+89,Llama-3.1-8B-vllm,conceptual0,nli,Linear,"{'version': 89, 'top_output': 3, 'text_modify': 'only_root'}",0.42,0.53,0.6,0.48,0.57,0.48
+90,Qwen3-8B-vllm,conceptual0_evaluative,nli,Linear,"{'version': 90, 'top_output': 3, 'text_modify': 'only_root'}",0.49,0.54,0.58,0.51,0.56,0.53
+91,Llama-3.1-8B-vllm,conceptual0_evaluative,nli,Linear,"{'version': 91, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.52,0.58,0.45,0.58,0.49
+92,Qwen3-8B-vllm,stage,nli,Linear,"{'version': 92, 'top_output': 3}",0.21,0.54,0.63,0.5,0.57,0.46
+93,Llama-3.1-8B-vllm,stage,nli,Linear,"{'version': 93, 'top_output': 3}",0.24,0.52,0.63,0.49,0.56,0.41
+94,Qwen3-8B-vllm,stage_arc,nli,Linear,"{'version': 94, 'top_output': 3}",0.22,0.52,0.61,0.47,0.51,0.48
+95,Llama-3.1-8B-vllm,stage_arc,nli,Linear,"{'version': 95, 'top_output': 3}",0.23,0.53,0.58,0.51,0.57,0.46
