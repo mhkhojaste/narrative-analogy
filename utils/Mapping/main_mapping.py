@@ -853,6 +853,7 @@ def Greedy_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
     elif args.dataset == "MCQ":
         return result, "-"
 
+##### Mapping Linear
 
 def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token, args):
 
@@ -1022,7 +1023,186 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
 
     elif args.dataset == "MCQ":
         return result, "-"
-    
+
+######## Mapping Role_constrained
+
+def align_units_with_roles(units, arc_story):
+    valid_roles = {"TP1", "TP2", "TP3", "TP4", "TP5"}
+    return [(unit, arc_story[unit]) for unit in units if unit in arc_story and arc_story[unit] in valid_roles]
+
+
+def get_role_position_mappings(base_units, target_units, base_arc, target_arc, target_key):
+    role_order = ["TP1", "TP2", "TP3", "TP4", "TP5"]
+
+    base_with_roles = align_units_with_roles(base_units, base_arc)
+    target_with_roles = align_units_with_roles(target_units, target_arc)
+
+    base_by_role = {role: [] for role in role_order}
+    target_by_role = {role: [] for role in role_order}
+
+    for unit, role in base_with_roles:
+        base_by_role[role].append(unit)
+
+    for unit, role in target_with_roles:
+        target_by_role[role].append(unit)
+
+    mappings = []
+
+    for role in role_order:
+        number_of_mappings = min(len(base_by_role[role]), len(target_by_role[role]))
+
+        for position in range(number_of_mappings):
+            mappings.append((base_by_role[role][position], target_by_role[role][position], role))
+
+    return mappings
+
+
+def Role_constrained_mapping(main_data, main_units, main_arc_units, embedding_model, nli_model, nli_token, args):
+    all_stories_events, nli_pairs = extract_story_units(main_data, main_units, args)
+    unique_values = list(dict.fromkeys(chain.from_iterable(all_stories_events.values())))
+
+    if args.scoring_method == "mahalanobis":
+        embedding_dicts = build_embedding_cache(embedding_model, unique_values, batch_size=1024, normalize=False, to_numpy=True, show_progress=True)
+        VI = fit_mahalanobis_from_dict(embedding_dicts)
+        nli_cache = None
+
+    elif args.scoring_method == "nli":
+        embedding_dicts = build_embedding_cache(embedding_model, unique_values)
+        VI = None
+        nli_pairs = list(dict.fromkeys(nli_pairs))
+        nli_cache = build_nli_cache(nli_pairs, nli_token, nli_model)
+
+    else:
+        embedding_dicts = build_embedding_cache(embedding_model, unique_values)
+        VI = None
+        nli_cache = None
+
+    y_true = []
+    y_pred = []
+
+    category_dict_ref = {"low-near": 294, "low-far": 294, "high-near": 253, "high-far": 254}
+    category_dict = {"low-near": 0, "low-far": 0, "high-near": 0, "high-far": 0}
+
+    empty_target_mappings = 0
+    empty_sample_mappings = 0
+
+    for index in tqdm(range(len(main_data)), desc="Role-constrained positional mapping"):
+        sample_unit = main_units[index]
+        sample_arc = main_arc_units[index]
+
+        base_unit = list(get_unit_events(sample_unit["base"]))
+
+        correct_answer, category = get_correct_answer(main_data, index, args)
+        y_true.append(correct_answer)
+
+        target_keys = sorted(key for key in sample_unit if key.startswith("target"))
+        total_scores = []
+
+        for target_key in target_keys:
+            target_unit = list(get_unit_events(sample_unit[target_key]))
+
+            role_mappings = get_role_position_mappings(base_unit, target_unit, sample_arc["base"], sample_arc[target_key], target_key)
+
+            if not role_mappings:
+                empty_target_mappings += 1
+                total_scores.append(-np.inf)
+                continue
+
+            mapping_scores = []
+
+            for base_event, target_event, role in role_mappings:
+                base_values = score_pair([base_event], sample_unit["base"], args)
+                target_values = score_pair([target_event], sample_unit[target_key], args)
+
+                if base_values is None or target_values is None:
+                    raise ValueError(f"score_pair returned None at sample {index}, target {target_key}, role {role}.")
+
+                number_of_values = min(len(base_values), len(target_values))
+
+                if number_of_values == 0:
+                    raise ValueError(f"No scoring values at sample {index}, target {target_key}, role {role}.")
+
+                base_values = base_values[:number_of_values]
+                target_values = target_values[:number_of_values]
+
+                missing_values = list(dict.fromkeys([value for value in base_values + target_values if value not in embedding_dicts]))
+
+                if missing_values:
+                    normalize_missing = args.scoring_method != "mahalanobis"
+                    missing_embeddings = embedding_model.encode(missing_values, normalize_embeddings=normalize_missing, convert_to_numpy=True, show_progress_bar=False)
+                    embedding_dicts.update(dict(zip(missing_values, missing_embeddings)))
+
+                B_local = np.stack([embedding_dicts[value] for value in base_values])
+                T_local = np.stack([embedding_dicts[value] for value in target_values])
+
+                if args.scoring_method == "mahalanobis":
+                    local_score = final_mahalanobis_similarity(B_local, T_local, VI)
+
+                elif args.scoring_method == "nli":
+                    nli_scores = []
+
+                    for value_index in range(number_of_values):
+                        base_value = base_values[value_index]
+                        target_value = target_values[value_index]
+                        pair = (base_value, target_value)
+
+                        if pair not in nli_cache:
+                            new_nli_cache = build_nli_cache([pair], nli_token, nli_model, batch_size=1)
+                            nli_cache.update(new_nli_cache)
+
+                        p_contra, p_neutral, p_ent = nli_cache[pair]
+                        raw_cosine = float(np.dot(B_local[value_index], T_local[value_index]))
+                        soft_sign = p_ent + p_neutral - p_contra
+                        nli_score = raw_cosine * soft_sign
+                        nli_scores.append(nli_score)
+
+                    local_score = float(np.min(nli_scores))
+
+                else:
+                    local_score = float(np.mean(np.sum(B_local * T_local, axis=1)))
+
+                if not np.isfinite(local_score):
+                    raise ValueError(f"Invalid local score at sample {index}, target {target_key}, role {role}: {local_score}")
+
+                mapping_scores.append(local_score)
+
+            current_total_score = float(np.mean(mapping_scores))
+            total_scores.append(current_total_score)
+
+        if not total_scores:
+            raise ValueError(f"No target stories at sample {index}.")
+
+        valid_scores = [score for score in total_scores if np.isfinite(score)]
+
+        if not valid_scores:
+            empty_sample_mappings += 1
+            max_index = random.randrange(len(target_keys))
+        else:
+            max_score = max(total_scores)
+            max_indices = [i for i, score in enumerate(total_scores) if score == max_score]
+            max_index = random.choice(max_indices)
+
+        y_pred.append(max_index)
+
+        if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
+            category_dict[category] += 1
+
+    print("Targets without shared TP roles:", empty_target_mappings)
+    print("Samples without any valid TP mapping:", empty_sample_mappings)
+
+    result = round(metrics.accuracy_score(y_true, y_pred), 2)
+
+    if args.dataset == "ARN":
+        for key in category_dict:
+            category_dict[key] = round(category_dict[key] / category_dict_ref[key], 2)
+
+        return result, category_dict
+
+    elif args.dataset == "MCQ":
+        return result, "-"
+
+
+ ####### Load data   
 
 def merge_abstraction_units(conceptual_units, evaluative_units):
     merged_units = {}
@@ -1084,8 +1264,11 @@ def load_data(args):
         with open(path_units, "rb") as f:
             main_units = pickle.load(f)
     
+    path_arc_abstraction = (f"{PATH_ABSTRACTION}{model_short}events_arc_{data_short}.pkl")
+    with open(path_arc_abstraction, "rb") as f:
+        arc_abstraction = pickle.load(f)
 
-    return main_data, main_units
+    return main_data, main_units, arc_abstraction
 
 
 def run_main_mapping(args):
@@ -1095,9 +1278,9 @@ def run_main_mapping(args):
     
     print("\n=== Step 2: Loading the Dataset and the Units ===")
     if args.dataset == "ARN":
-         main_data, main_units = load_data(args)
+         main_data, main_units, arc_abstraction = load_data(args)
     elif args.dataset == "MCQ":
-        main_data, main_units = load_data(args)
+        main_data, main_units, arc_abstraction = load_data(args)
 
     
     print(f"\n=== Step 3: Run the mapping with {args.global_map} mapping and {args.scoring_method} scoring and {args.config} config")
@@ -1106,6 +1289,13 @@ def run_main_mapping(args):
 
     elif args.global_map == "Linear":
         accuracy, arn_category_accuracy = Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token, args)
+
+    elif args.global_map == "Role_mapping":
+        if args.unit == "stage":
+            accuracy, arn_category_accuracy = Role_constrained_mapping(main_data, main_units, main_units, embedding_model, nli_model, nli_token, args)
+        else:
+            accuracy, arn_category_accuracy = Role_constrained_mapping(main_data, main_units, arc_abstraction, embedding_model, nli_model, nli_token, args)
+
 
     elif args.global_map == "max_flow":
         accuracy, arn_category_accuracy = 0, 0
