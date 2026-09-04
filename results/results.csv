@@ -112,3 +112,11 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 111,Llama-3.1-8B-vllm,conceptual0_evaluative,nli,Role_mapping,"{'version': 111, 'top_output': 3, 'text_modify': 'only_root'}",0.36,0.56,0.56,0.5,0.62,0.55
 112,Qwen3-8B-vllm,stage,nli,Role_mapping,"{'version': 112, 'top_output': 3}",0.21,0.57,0.67,0.52,0.63,0.44
 113,Llama-3.1-8B-vllm,stage,nli,Role_mapping,"{'version': 113, 'top_output': 3}",0.24,0.55,0.66,0.49,0.64,0.41
+114,Qwen3-8B-vllm,events,mahalanobis,Role_mapping,"{'version': 114, 'top_output': 3}",0.17,0.44,0.67,0.33,0.59,0.16
+115,Llama-3.1-8B-vllm,events,mahalanobis,Role_mapping,"{'version': 115, 'top_output': 3}",0.16,0.46,0.68,0.34,0.62,0.19
+116,Qwen3-8B-vllm,conceptual0,mahalanobis,Role_mapping,"{'version': 116, 'top_output': 3, 'text_modify': 'only_root'}",0.34,0.47,0.49,0.43,0.51,0.48
+117,Llama-3.1-8B-vllm,conceptual0,mahalanobis,Role_mapping,"{'version': 117, 'top_output': 3, 'text_modify': 'only_root'}",0.32,0.51,0.55,0.46,0.57,0.44
+118,Qwen3-8B-vllm,conceptual0_evaluative,mahalanobis,Role_mapping,"{'version': 118, 'top_output': 3, 'text_modify': 'only_root'}",0.4,0.52,0.57,0.48,0.58,0.44
+119,Llama-3.1-8B-vllm,conceptual0_evaluative,mahalanobis,Role_mapping,"{'version': 119, 'top_output': 3, 'text_modify': 'only_root'}",0.35,0.55,0.61,0.48,0.62,0.5
+120,Qwen3-8B-vllm,stage,mahalanobis,Role_mapping,"{'version': 120, 'top_output': 3}",0.23,0.49,0.61,0.42,0.58,0.33
+121,Llama-3.1-8B-vllm,stage,mahalanobis,Role_mapping,"{'version': 121, 'top_output': 3}",0.25,0.51,0.63,0.44,0.62,0.33
