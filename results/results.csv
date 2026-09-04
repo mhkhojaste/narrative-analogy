@@ -120,3 +120,11 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 119,Llama-3.1-8B-vllm,conceptual0_evaluative,mahalanobis,Role_mapping,"{'version': 119, 'top_output': 3, 'text_modify': 'only_root'}",0.35,0.55,0.61,0.48,0.62,0.5
 120,Qwen3-8B-vllm,stage,mahalanobis,Role_mapping,"{'version': 120, 'top_output': 3}",0.23,0.49,0.61,0.42,0.58,0.33
 121,Llama-3.1-8B-vllm,stage,mahalanobis,Role_mapping,"{'version': 121, 'top_output': 3}",0.25,0.51,0.63,0.44,0.62,0.33
+122,Qwen3-8B-vllm,events,cosine_modernbert,Role_mapping,"{'version': 122, 'top_output': 3}",0.14,0.49,0.82,0.34,0.68,0.09
+123,Llama-3.1-8B-vllm,events,cosine_modernbert,Role_mapping,"{'version': 123, 'top_output': 3}",0.15,0.47,0.79,0.3,0.66,0.11
+124,Qwen3-8B-vllm,conceptual0,cosine_modernbert,Role_mapping,"{'version': 124, 'top_output': 3, 'text_modify': 'only_root'}",0.39,0.54,0.64,0.53,0.54,0.44
+125,Llama-3.1-8B-vllm,conceptual0,cosine_modernbert,Role_mapping,"{'version': 125, 'top_output': 3, 'text_modify': 'only_root'}",0.38,0.55,0.58,0.55,0.57,0.48
+126,Qwen3-8B-vllm,conceptual0_evaluative,cosine_modernbert,Role_mapping,"{'version': 126, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.53,0.59,0.51,0.6,0.43
+127,Llama-3.1-8B-vllm,conceptual0_evaluative,cosine_modernbert,Role_mapping,"{'version': 127, 'top_output': 3, 'text_modify': 'only_root'}",0.37,0.55,0.59,0.47,0.63,0.51
+128,Qwen3-8B-vllm,stage,cosine_modernbert,Role_mapping,"{'version': 128, 'top_output': 3}",0.28,0.57,0.78,0.45,0.69,0.34
+129,Llama-3.1-8B-vllm,stage,cosine_modernbert,Role_mapping,"{'version': 129, 'top_output': 3}",0.28,0.53,0.73,0.44,0.68,0.28
