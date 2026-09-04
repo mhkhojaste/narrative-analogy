@@ -128,3 +128,11 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 127,Llama-3.1-8B-vllm,conceptual0_evaluative,cosine_modernbert,Role_mapping,"{'version': 127, 'top_output': 3, 'text_modify': 'only_root'}",0.37,0.55,0.59,0.47,0.63,0.51
 128,Qwen3-8B-vllm,stage,cosine_modernbert,Role_mapping,"{'version': 128, 'top_output': 3}",0.28,0.57,0.78,0.45,0.69,0.34
 129,Llama-3.1-8B-vllm,stage,cosine_modernbert,Role_mapping,"{'version': 129, 'top_output': 3}",0.28,0.53,0.73,0.44,0.68,0.28
+130,Qwen3-8B-vllm,events,cosine,Role_mapping,"{'version': 130, 'top_output': 3}",0.15,0.39,0.67,0.29,0.49,0.08
+131,Llama-3.1-8B-vllm,events,cosine,Role_mapping,"{'version': 131, 'top_output': 3}",0.14,0.4,0.64,0.31,0.53,0.1
+132,Qwen3-8B-vllm,conceptual0,cosine,Role_mapping,"{'version': 132, 'top_output': 3, 'text_modify': 'only_root'}",0.39,0.5,0.59,0.46,0.53,0.43
+133,Llama-3.1-8B-vllm,conceptual0,cosine,Role_mapping,"{'version': 133, 'top_output': 3, 'text_modify': 'only_root'}",0.38,0.53,0.58,0.54,0.57,0.44
+134,Qwen3-8B-vllm,conceptual0_evaluative,cosine,Role_mapping,"{'version': 134, 'top_output': 3, 'text_modify': 'only_root'}",0.44,0.52,0.59,0.5,0.56,0.42
+135,Llama-3.1-8B-vllm,conceptual0_evaluative,cosine,Role_mapping,"{'version': 135, 'top_output': 3, 'text_modify': 'only_root'}",0.36,0.55,0.57,0.51,0.62,0.49
+136,Qwen3-8B-vllm,stage,cosine,Role_mapping,"{'version': 136, 'top_output': 3}",0.23,0.55,0.77,0.41,0.68,0.32
+137,Llama-3.1-8B-vllm,stage,cosine,Role_mapping,"{'version': 137, 'top_output': 3}",0.23,0.56,0.77,0.46,0.72,0.28
