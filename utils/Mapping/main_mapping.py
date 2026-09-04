@@ -179,8 +179,8 @@ def print_sol(solutions):
         break
 
 def compute_max_and_total_scores(solutions):
-    max_score = 0
-    total_score = 0
+    max_score = -np.inf
+    total_score = -np.inf
 
     for sol in solutions:
         coverage_sum = sum(sol['coverage'])
@@ -992,6 +992,7 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
 
             current_total_score = float(np.mean(mapping_scores)) if mapping_scores else -10.0
 
+
             assert np.isfinite(current_total_score), f"Invalid total score at sample {index}, target {target_key}"
 
             total_scores.append(current_total_score)
@@ -1006,7 +1007,7 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
 
         max_index = random.choice(max_indices)
         y_pred.append(max_index)
-
+    
         if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
             assert category in category_dict, f"Unknown category '{category}' at sample {index}"
             category_dict[category] += 1
