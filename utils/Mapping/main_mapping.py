@@ -25,6 +25,7 @@ from sentence_transformers.util import normalize_embeddings
 from hungarian_algorithm import algorithm
 from scipy.optimize import linear_sum_assignment
 import networkx as nx
+import matplotlib.pyplot as plt
 
 
 random.seed(309)
@@ -47,6 +48,8 @@ PATH_ABSTRACTION = "Data_new/Abstraction/"
 RESULTS_DIR = "results/"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 RESULTS_PATH = RESULTS_DIR + "results.csv"
+
+os.makedirs("Graphs_pic", exist_ok=True)
     
 def compute_max_and_total_scores(solutions):
     max_score = -np.inf
@@ -736,9 +739,613 @@ def Global_assignment_mapping(main_data, main_units, embedding_model, nli_model,
         return result, "-"
 
 
+###### GED
+
+VALID_GED_VARIANTS = {"GED_events", "GED_conceptual", "GED_stage", "GED_events_full", "GED_conceptual_evaluative", "GED_conceptual_full", "GED_stage_arc"}
+VALID_ARC_ROLES = {"TP1", "TP2", "TP3", "TP4", "TP5"}
+
+def print_ged_graph(graph):
+    print("\nNODES")
+
+    for node_id, data in graph.nodes(data=True):
+        print(f"{node_id}: type={data.get('type')}, text={data.get('text')}, position={data.get('position')}, role={data.get('role')}, values={data.get('values')}")
+
+    print("\nEDGES")
+
+    for source, target, data in graph.edges(data=True):
+        print(f"{source} -> {target}: type={data.get('type')}")
 
 
- ####### Load data   
+def plot_ged_graph(graph, output_path, title="GED graph"):
+    node_colors = {"event": "#4C78A8", "conceptual": "#72B7B2", "evaluative": "#F58518", "stage": "#54A24B", "arc": "#E45756"}
+    colors = [node_colors.get(data.get("type"), "#B0B0B0") for _, data in graph.nodes(data=True)]
+    labels = {node_id: f"{data.get('type')}\n{data.get('text', '')[:25]}" for node_id, data in graph.nodes(data=True)}
+    edge_labels = {(source, target): data.get("type", "") for source, target, data in graph.edges(data=True)}
+    attachment_targets = {target for source, target, data in graph.edges(data=True) if data.get("type") != "next"}
+    layer_positions = {"conceptual": 1.5, "evaluative": -1.5, "stage": 3.0, "arc": -3.0}
+    positions = {}
+
+    for index, (node_id, data) in enumerate(graph.nodes(data=True)):
+        node_position = data.get("position")
+
+        if node_position is None:
+            parent_positions = [graph.nodes[parent].get("position") for parent in graph.predecessors(node_id)]
+            parent_positions = [position for position in parent_positions if position is not None]
+            node_position = sum(parent_positions) / len(parent_positions) if parent_positions else index
+
+        vertical_position = layer_positions.get(data.get("type"), 1.5) if node_id in attachment_targets else 0
+        positions[node_id] = (node_position, vertical_position)
+
+    plt.figure(figsize=(max(14, len(graph.nodes) * 2.5), 6))
+    nx.draw_networkx_nodes(graph, positions, node_color=colors, node_size=2200, edgecolors="black")
+    nx.draw_networkx_labels(graph, positions, labels=labels, font_size=7)
+    nx.draw_networkx_edges(graph, positions, arrows=True, arrowstyle="-|>", arrowsize=25, min_source_margin=25, min_target_margin=25)
+    nx.draw_networkx_edge_labels(graph, positions, edge_labels=edge_labels, font_size=7)
+    plt.title(title)
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    print("saved as: ", output_path)
+
+
+def get_ged_scoring_values(text, node_type, args):
+    if text is None:
+        return []
+
+    text = str(text).strip()
+
+    if not text:
+        return []
+
+    if node_type == "conceptual":
+        text = text.replace("_", " ").lower()
+        words = text.split()
+        return [words[1] if len(words) > 1 else text]
+
+    return [text]
+
+
+def add_ged_node(graph, node_id, node_type, text, args, position=None, role=None):
+    scoring_values = get_ged_scoring_values(text, node_type, args)
+
+    if not scoring_values:
+        return False
+
+    graph.add_node(node_id, type=node_type, text=str(text), values=scoring_values, position=position, role=role)
+    return True
+
+
+def add_temporal_edges(graph, backbone_nodes):
+    for position in range(len(backbone_nodes) - 1):
+        graph.add_edge(backbone_nodes[position], backbone_nodes[position + 1], type="next")
+
+
+def get_stage_items(stage_story):
+    if not isinstance(stage_story, dict):
+        return []
+
+    stage_items = [(stage_text, role) for stage_text, role in stage_story.items() if role in VALID_ARC_ROLES]
+    stage_items.sort(key=lambda item: int(item[1].replace("TP", "")))
+
+    return stage_items
+
+
+def add_shared_arc_and_stage_nodes(graph, backbone_event_nodes, arc_story, stage_story, args):
+    arc_labels = {"TP1": "Introduction", "TP2": "Event", "TP3": "Challenge", "TP4": "Action", "TP5": "Conclusion"}
+    stage_items = get_stage_items(stage_story)
+    stage_values_by_role = {}
+    arc_nodes_by_role = {}
+    stage_nodes_by_role = {}
+
+    for stage_index, (stage_text, role) in enumerate(stage_items):
+        if role in VALID_ARC_ROLES:
+            stage_values_by_role.setdefault(role, []).append((f"shared_stage_{stage_index}", stage_text))
+
+    for backbone_node, event in backbone_event_nodes:
+        role = arc_story.get(event)
+
+        if role not in VALID_ARC_ROLES:
+            continue
+
+        if role not in arc_nodes_by_role:
+            arc_node_id = f"shared_arc_{role}"
+            arc_text = arc_labels[role]
+
+            if add_ged_node(graph, arc_node_id, "arc", arc_text, args):
+                arc_nodes_by_role[role] = arc_node_id
+
+        if role in arc_nodes_by_role:
+            graph.add_edge(backbone_node, arc_nodes_by_role[role], type="has_arc")
+
+        for stage_node_id, stage_text in stage_values_by_role.get(role, []):
+            if stage_node_id not in graph:
+                if add_ged_node(graph, stage_node_id, "stage", stage_text, args):
+                    stage_nodes_by_role.setdefault(role, []).append(stage_node_id)
+
+            if stage_node_id in graph:
+                graph.add_edge(backbone_node, stage_node_id, type="has_stage")
+
+
+def build_ged_graph(events_story, conceptual_story, evaluative_story, arc_story, stage_story, timeline_story, graph_variant, args):
+    if graph_variant not in VALID_GED_VARIANTS:
+        raise ValueError(f"Unknown GED graph variant: {graph_variant}")
+
+    events_story = list(events_story) if events_story is not None else []
+    conceptual_story = conceptual_story if isinstance(conceptual_story, dict) else {}
+    evaluative_story = evaluative_story if isinstance(evaluative_story, dict) else {}
+    arc_story = arc_story if isinstance(arc_story, dict) else {}
+    stage_story = stage_story if isinstance(stage_story, dict) else {}
+    timeline_story = timeline_story if isinstance(timeline_story, dict) else {}
+
+    if args.config.get("timeline", False) in (True, "true"):
+        events_story.sort(key=lambda event: int(timeline_story[event]) if event in timeline_story else float("inf"))
+
+    graph = nx.DiGraph()
+
+    if graph_variant == "GED_events":
+        backbone_nodes = []
+
+        for event_index, event in enumerate(events_story):
+            event_node_id = f"event_{event_index}"
+
+            if add_ged_node(graph, event_node_id, "event", event, args, position=event_index):
+                backbone_nodes.append(event_node_id)
+
+        add_temporal_edges(graph, backbone_nodes)
+
+    elif graph_variant == "GED_conceptual":
+        backbone_nodes = []
+
+        for event_index, event in enumerate(events_story):
+            conceptual_text = conceptual_story.get(event)
+
+            if conceptual_text is None:
+                continue
+
+            conceptual_node_id = f"conceptual_{event_index}"
+
+            if add_ged_node(graph, conceptual_node_id, "conceptual", conceptual_text, args, position=event_index):
+                backbone_nodes.append(conceptual_node_id)
+
+        add_temporal_edges(graph, backbone_nodes)
+
+    elif graph_variant == "GED_stage":
+        backbone_nodes = []
+
+        for stage_index, (stage_text, role) in enumerate(get_stage_items(stage_story)):
+            stage_node_id = f"stage_{stage_index}"
+
+            if add_ged_node(graph, stage_node_id, "stage", stage_text, args, position=stage_index):
+                backbone_nodes.append(stage_node_id)
+
+        add_temporal_edges(graph, backbone_nodes)
+
+    elif graph_variant == "GED_events_full":
+        backbone_nodes = []
+        backbone_event_nodes = []
+
+        for event_index, event in enumerate(events_story):
+            event_node_id = f"event_{event_index}"
+
+            if not add_ged_node(graph, event_node_id, "event", event, args, position=event_index):
+                continue
+
+            backbone_nodes.append(event_node_id)
+            backbone_event_nodes.append((event_node_id, event))
+
+            conceptual_text = conceptual_story.get(event)
+
+            if conceptual_text is not None:
+                conceptual_node_id = f"conceptual_{event_index}"
+
+                if add_ged_node(graph, conceptual_node_id, "conceptual", conceptual_text, args, position=event_index):
+                    graph.add_edge(event_node_id, conceptual_node_id, type="has_conceptual")
+
+            evaluative_text = evaluative_story.get(event)
+
+            if evaluative_text is not None:
+                evaluative_node_id = f"evaluative_{event_index}"
+
+                if add_ged_node(graph, evaluative_node_id, "evaluative", evaluative_text, args, position=event_index):
+                    graph.add_edge(event_node_id, evaluative_node_id, type="has_evaluative")
+
+        add_temporal_edges(graph, backbone_nodes)
+        add_shared_arc_and_stage_nodes(graph, backbone_event_nodes, arc_story, stage_story, args)
+
+    elif graph_variant == "GED_conceptual_evaluative":
+        backbone_nodes = []
+
+        for event_index, event in enumerate(events_story):
+            conceptual_text = conceptual_story.get(event)
+
+            if conceptual_text is None:
+                continue
+
+            conceptual_node_id = f"conceptual_{event_index}"
+
+            if not add_ged_node(graph, conceptual_node_id, "conceptual", conceptual_text, args, position=event_index):
+                continue
+
+            backbone_nodes.append(conceptual_node_id)
+            evaluative_text = evaluative_story.get(event)
+
+            if evaluative_text is not None:
+                evaluative_node_id = f"evaluative_{event_index}"
+
+                if add_ged_node(graph, evaluative_node_id, "evaluative", evaluative_text, args, position=event_index):
+                    graph.add_edge(conceptual_node_id, evaluative_node_id, type="has_evaluative")
+
+        add_temporal_edges(graph, backbone_nodes)
+
+    elif graph_variant == "GED_conceptual_full":
+        backbone_nodes = []
+        backbone_event_nodes = []
+
+        for event_index, event in enumerate(events_story):
+            conceptual_text = conceptual_story.get(event)
+
+            if conceptual_text is None:
+                continue
+
+            conceptual_node_id = f"conceptual_{event_index}"
+
+            if not add_ged_node(graph, conceptual_node_id, "conceptual", conceptual_text, args, position=event_index):
+                continue
+
+            backbone_nodes.append(conceptual_node_id)
+            backbone_event_nodes.append((conceptual_node_id, event))
+
+            evaluative_text = evaluative_story.get(event)
+
+            if evaluative_text is not None:
+                evaluative_node_id = f"evaluative_{event_index}"
+
+                if add_ged_node(graph, evaluative_node_id, "evaluative", evaluative_text, args, position=event_index):
+                    graph.add_edge(conceptual_node_id, evaluative_node_id, type="has_evaluative")
+
+        add_temporal_edges(graph, backbone_nodes)
+        add_shared_arc_and_stage_nodes(graph, backbone_event_nodes, arc_story, stage_story, args)
+
+    elif graph_variant == "GED_stage_arc":
+        arc_labels = {"TP1": "Introduction", "TP2": "Event", "TP3": "Challenge", "TP4": "Action", "TP5": "Conclusion"}
+        backbone_nodes = []
+        stage_role_pairs = []
+        arc_nodes_by_role = {}
+
+        for stage_index, (stage_text, role) in enumerate(get_stage_items(stage_story)):
+            stage_node_id = f"stage_{stage_index}"
+
+            if add_ged_node(graph, stage_node_id, "stage", stage_text, args, position=stage_index):
+                backbone_nodes.append(stage_node_id)
+                stage_role_pairs.append((stage_node_id, role))
+
+        add_temporal_edges(graph, backbone_nodes)
+
+        for stage_node_id, role in stage_role_pairs:
+            if role not in arc_nodes_by_role:
+                arc_node_id = f"arc_{role}"
+                arc_text = arc_labels[role]
+
+                if add_ged_node(graph, arc_node_id, "arc", arc_text, args):
+                    arc_nodes_by_role[role] = arc_node_id
+
+            if role in arc_nodes_by_role:
+                graph.add_edge(stage_node_id, arc_nodes_by_role[role], type="has_arc")
+
+    return graph
+
+
+def build_ged_graph_cache(main_data, main_events, main_conceptual, main_evaluative, main_arc, main_stage, main_timeline, args):
+    graph_cache = {}
+    unique_graph_cache = {}
+    all_scoring_values = []
+    reused_graphs = 0
+
+    input_lengths = [len(main_events), len(main_conceptual), len(main_evaluative), len(main_arc), len(main_stage), len(main_timeline)]
+
+    if any(length != len(main_data) for length in input_lengths):
+        raise ValueError(f"GED input lengths do not match main_data: main_data={len(main_data)}, inputs={input_lengths}")
+
+    for index in tqdm(range(len(main_data)), desc="Building GED graphs"):
+        sample_events = main_events[index]
+        sample_conceptual = main_conceptual[index]
+        sample_evaluative = main_evaluative[index]
+        sample_arc = main_arc[index]
+        sample_stage = main_stage[index]
+        sample_timeline = main_timeline[index]
+
+        if args.dataset == "ARN":
+            row = main_data.iloc[index]
+            story_texts = {"base": row["query_narrative"].strip(), "target1": row["first_choice"].strip(), "target2": row["second_choice"].strip()}
+
+        elif args.dataset == "MCQ":
+            sample_data = main_data[index]
+            story_texts = {"base": sample_data["source"].strip()}
+            story_texts.update({f"target{choice_index + 1}": choice.strip() for choice_index, choice in enumerate(sample_data["choices"])})
+
+        else:
+            raise ValueError(f"Unsupported dataset for GED graph caching: {args.dataset}")
+
+        story_keys = ["base"] + sorted(key for key in sample_events if key.startswith("target"))
+
+        for story_key in story_keys:
+            if story_key not in story_texts:
+                raise KeyError(f"Story text is missing at sample {index}, key {story_key}.")
+
+            events_story = sample_events.get(story_key, [])
+            conceptual_story = sample_conceptual.get(story_key, {})
+            evaluative_story = sample_evaluative.get(story_key, {})
+            arc_story = sample_arc.get(story_key, {})
+            stage_story = sample_stage.get(story_key, {})
+            timeline_story = sample_timeline.get(story_key, {})
+
+            story_signature = story_texts[story_key]
+
+            if story_signature not in unique_graph_cache:
+                graph = build_ged_graph(events_story, conceptual_story, evaluative_story, arc_story, stage_story, timeline_story, args.global_map, args)
+                unique_graph_cache[story_signature] = graph
+
+                for _, node_data in graph.nodes(data=True):
+                    all_scoring_values.extend(node_data["values"])
+            else:
+                graph = unique_graph_cache[story_signature]
+                reused_graphs += 1
+
+            graph_cache[(index, story_key)] = graph
+
+
+    unique_scoring_values = list(dict.fromkeys(all_scoring_values))
+
+    print("Total story occurrences:", len(graph_cache))
+    print("Unique GED graphs:", len(unique_graph_cache))
+    print("Reused GED graphs:", reused_graphs)
+
+    return graph_cache, unique_scoring_values
+
+
+def collect_missing_ged_nli_pairs(base_graph, target_graph, nli_cache):
+    missing_pairs = []
+
+    for _, base_data in base_graph.nodes(data=True):
+        for _, target_data in target_graph.nodes(data=True):
+            if base_data["type"] != target_data["type"]:
+                continue
+
+            base_values = base_data["values"]
+            target_values = target_data["values"]
+            number_of_values = min(len(base_values), len(target_values))
+
+            for value_index in range(number_of_values):
+                pair = (base_values[value_index], target_values[value_index])
+
+                if pair not in nli_cache:
+                    missing_pairs.append(pair)
+
+    return list(dict.fromkeys(missing_pairs))
+
+
+def ged_node_substitution_cost(base_data, target_data, embedding_dicts, VI, nli_cache, args):
+    if base_data["type"] != target_data["type"]:
+        return 1.0
+
+    base_values = base_data["values"]
+    target_values = target_data["values"]
+    number_of_values = min(len(base_values), len(target_values))
+
+    if number_of_values == 0:
+        return 1.0
+
+    base_values = base_values[:number_of_values]
+    target_values = target_values[:number_of_values]
+
+    B_local = np.stack([embedding_dicts[value] for value in base_values])
+    T_local = np.stack([embedding_dicts[value] for value in target_values])
+
+    if args.scoring_method == "mahalanobis":
+        normalized_similarity = float(np.clip(final_mahalanobis_similarity(B_local, T_local, VI), 0.0, 1.0))
+
+    elif args.scoring_method == "nli":
+        component_scores = []
+
+        for value_index in range(number_of_values):
+            base_value = base_values[value_index]
+            target_value = target_values[value_index]
+            pair = (base_value, target_value)
+
+            if pair not in nli_cache:
+                raise KeyError(f"Missing NLI pair in GED cache: {pair}")
+
+            p_contra, p_neutral, p_ent = nli_cache[pair]
+            raw_cosine = float(np.dot(B_local[value_index], T_local[value_index]))
+            soft_sign = p_ent + p_neutral - p_contra
+            component_scores.append(raw_cosine * soft_sign)
+
+        raw_similarity = float(np.mean(component_scores))
+        normalized_similarity = float(np.clip((raw_similarity + 1.0) / 2.0, 0.0, 1.0))
+
+    else:
+        raw_similarity = float(np.mean(np.sum(B_local * T_local, axis=1)))
+        normalized_similarity = float(np.clip((raw_similarity + 1.0) / 2.0, 0.0, 1.0))
+
+    return float(1.0 - normalized_similarity)
+
+
+def ged_node_deletion_cost(node_data):
+    return 0.5
+
+
+def ged_node_insertion_cost(node_data):
+    return 0.5
+
+
+def ged_edge_substitution_cost(base_edge_data, target_edge_data):
+    return 0.0 if base_edge_data.get("type") == target_edge_data.get("type") else 1.0
+
+
+def ged_edge_deletion_cost(edge_data):
+    return 0.5
+
+
+def ged_edge_insertion_cost(edge_data):
+    return 0.5
+
+
+def get_normalized_ged_similarity(base_graph, target_graph, embedding_dicts, VI, nli_cache, args):
+    deletion_insertion_cost = 0.5 * (base_graph.number_of_nodes() + target_graph.number_of_nodes() + base_graph.number_of_edges() + target_graph.number_of_edges())
+
+    if deletion_insertion_cost == 0:
+        return None, None, 0.0
+
+    node_substitution_function = lambda base_data, target_data: ged_node_substitution_cost(base_data, target_data, embedding_dicts, VI, nli_cache, args)
+    timeout = float(args.config.get("ged_timeout", 5.0))
+
+    if timeout <= 0:
+        raise ValueError(f"ged_timeout must be positive, received: {timeout}")
+
+    start_time = time.perf_counter()
+    ged = nx.graph_edit_distance(base_graph, target_graph, node_subst_cost=node_substitution_function, node_del_cost=ged_node_deletion_cost, node_ins_cost=ged_node_insertion_cost, edge_subst_cost=ged_edge_substitution_cost, edge_del_cost=ged_edge_deletion_cost, edge_ins_cost=ged_edge_insertion_cost, timeout=timeout)
+    elapsed_time = time.perf_counter() - start_time
+
+    if ged is None:
+        return None, None, elapsed_time
+
+    ged = float(ged)
+
+    if not np.isfinite(ged) or ged < 0:
+        raise ValueError(f"Invalid GED value: {ged}")
+
+    effective_ged = min(ged, deletion_insertion_cost)
+    normalized_ged = effective_ged / deletion_insertion_cost
+    graph_similarity = float(np.clip(1.0 - normalized_ged, 0.0, 1.0))
+
+    return graph_similarity, ged, elapsed_time
+
+
+def build_ged_nli_cache(graph_cache, main_events, nli_token, nli_model, batch_size=256):
+    all_nli_pairs = []
+    seen_pairs = set()
+
+    for index in tqdm(range(len(main_events)), desc="Collecting GED NLI pairs"):
+        base_graph = graph_cache[(index, "base")]
+        target_keys = sorted(key for key in main_events[index] if key.startswith("target"))
+
+        for target_key in target_keys:
+            target_graph = graph_cache[(index, target_key)]
+            graph_pairs = collect_missing_ged_nli_pairs(base_graph, target_graph, {})
+
+            for pair in graph_pairs:
+                if pair not in seen_pairs:
+                    seen_pairs.add(pair)
+                    all_nli_pairs.append(pair)
+
+    print("Unique GED NLI pairs:", len(all_nli_pairs))
+
+    if not all_nli_pairs:
+        return {}
+
+    return build_nli_cache(all_nli_pairs, nli_token, nli_model, batch_size=batch_size)
+
+
+def GED_mapping(main_data, main_events, main_conceptual, main_evaluative, main_arc, main_stage, main_timeline, embedding_model, nli_model, nli_token, args):
+    graph_cache, unique_scoring_values = build_ged_graph_cache(main_data, main_events, main_conceptual, main_evaluative, main_arc, main_stage, main_timeline, args)
+    nli_batch_size = int(args.config.get("nli_batch_size", 256))
+
+    if args.scoring_method == "mahalanobis":
+        embedding_dicts = build_embedding_cache(embedding_model, unique_scoring_values, batch_size=1024, normalize=False, to_numpy=True, show_progress=True)
+        VI = fit_mahalanobis_from_dict(embedding_dicts)
+        nli_cache = None
+
+    elif args.scoring_method == "nli":
+        embedding_dicts = build_embedding_cache(embedding_model, unique_scoring_values)
+        VI = None
+        nli_cache = build_ged_nli_cache(graph_cache, main_events, nli_token, nli_model, batch_size=nli_batch_size)
+
+    else:
+        embedding_dicts = build_embedding_cache(embedding_model, unique_scoring_values)
+        VI = None
+        nli_cache = None
+
+    y_true = []
+    y_pred = []
+
+    category_dict_ref = {"low-near": 294, "low-far": 294, "high-near": 253, "high-far": 254}
+    category_dict = {"low-near": 0, "low-far": 0, "high-near": 0, "high-far": 0}
+
+    tie_count = 0
+    empty_graph_comparisons = 0
+    failed_ged_comparisons = 0
+    near_timeout_comparisons = 0
+    ged_timeout = float(args.config.get("ged_timeout", 5.0))
+
+    for index in tqdm(range(len(main_data)), desc=f"GED mapping ({args.global_map})"):
+        sample_events = main_events[index]
+        base_graph = graph_cache[(index, "base")]
+
+        correct_answer, category = get_correct_answer(main_data, index, args)
+        y_true.append(correct_answer)
+
+        target_keys = sorted(key for key in sample_events if key.startswith("target"))
+        total_scores = []
+
+        if not target_keys:
+            raise ValueError(f"No target stories at sample {index}.")
+
+        for target_key in target_keys:
+            target_graph = graph_cache[(index, target_key)]
+
+            if base_graph.number_of_nodes() == 0 or target_graph.number_of_nodes() == 0:
+                empty_graph_comparisons += 1
+                total_scores.append(-np.inf)
+                continue
+
+            graph_similarity, ged, elapsed_time = get_normalized_ged_similarity(base_graph, target_graph, embedding_dicts, VI, nli_cache, args)
+
+            if elapsed_time >= 0.95 * ged_timeout:
+                near_timeout_comparisons += 1
+
+            if graph_similarity is None:
+                failed_ged_comparisons += 1
+                total_scores.append(-np.inf)
+                continue
+
+            total_scores.append(graph_similarity)
+
+        valid_scores = [score for score in total_scores if np.isfinite(score)]
+
+        if not valid_scores:
+            raise ValueError(f"No valid GED target scores at sample {index}.")
+
+        max_score = max(total_scores)
+        max_indices = [target_index for target_index, score in enumerate(total_scores) if score == max_score]
+
+        if len(max_indices) > 1:
+            tie_count += 1
+
+        y_pred.append(random.choice(max_indices))
+
+        if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
+            category_dict[category] += 1
+
+    print("GED graph variant:", args.global_map)
+    print("GED timeout:", ged_timeout)
+    print("GED ties:", tie_count)
+    print("Empty graph comparisons:", empty_graph_comparisons)
+    print("Failed GED comparisons:", failed_ged_comparisons)
+    print("Comparisons near timeout:", near_timeout_comparisons)
+
+    result = round(metrics.accuracy_score(y_true, y_pred), 2)
+
+    if args.dataset == "ARN":
+        for key in category_dict:
+            category_dict[key] = round(category_dict[key] / category_dict_ref[key], 2)
+
+        return result, category_dict
+
+    elif args.dataset == "MCQ":
+        return result, "-"
+
+####### Load data   
 
 def merge_abstraction_units(conceptual_units, evaluative_units):
     merged_units = {}
@@ -804,8 +1411,51 @@ def load_data(args):
     with open(path_arc_abstraction, "rb") as f:
         arc_abstraction = pickle.load(f)
 
-    return main_data, main_units, arc_abstraction
+    path_timeline = (f"{PATH_ABSTRACTION}{model_short}events_timeline_{data_short}.pkl")
+    with open(path_timeline, "rb") as f:
+        timeline_abstraction = pickle.load(f)
 
+    return main_data, main_units, arc_abstraction, timeline_abstraction
+
+
+def load_ged_data(args):
+    data_short = args.dataset.lower()
+    model_short = model_short_dict.get(args.model)
+
+    if data_short == "arn":
+        main_data = pd.read_csv("Data/Datasets/Analogical Reasoning on Narratives (ARN) dataset.xlsx - Sheet1.csv")
+    elif data_short == "mcq":
+        with open("Data/Datasets/storyanalogy_multiple_choice.json") as f:
+            main_data = json.load(f)
+    else:
+        raise ValueError(f"Unsupported dataset: {args.dataset}")
+
+    events_path = f"{PATH_UNITS}{model_short}events_{data_short}.pkl"
+    conceptual_path = f"{PATH_ABSTRACTION}{model_short}events_conceptual0_{data_short}.pkl"
+    evaluative_path = f"{PATH_ABSTRACTION}{model_short}events_evaluative_{data_short}.pkl"
+    arc_path = f"{PATH_ABSTRACTION}{model_short}events_arc_{data_short}.pkl"
+    stage_path = f"{PATH_ABSTRACTION}{model_short}events_stage_{data_short}.pkl"
+    timeline_path = f"{PATH_ABSTRACTION}{model_short}events_timeline_{data_short}.pkl"
+
+    with open(events_path, "rb") as f:
+        main_events = pickle.load(f)
+
+    with open(conceptual_path, "rb") as f:
+        main_conceptual = pickle.load(f)
+
+    with open(evaluative_path, "rb") as f:
+        main_evaluative = pickle.load(f)
+
+    with open(arc_path, "rb") as f:
+        main_arc = pickle.load(f)
+
+    with open(stage_path, "rb") as f:
+        main_stage = pickle.load(f)
+
+    with open(timeline_path, "rb") as f:
+        main_timeline = pickle.load(f)
+
+    return main_data, main_events, main_conceptual, main_evaluative, main_arc, main_stage, main_timeline
 
 def run_main_mapping(args):
     print("\n=== Step 1: Loading embedding model ===")
@@ -814,9 +1464,9 @@ def run_main_mapping(args):
     
     print("\n=== Step 2: Loading the Dataset and the Units ===")
     if args.dataset == "ARN":
-         main_data, main_units, arc_abstraction = load_data(args)
+        main_data, main_units, arc_abstraction, timeline_abstraction = load_data(args)
     elif args.dataset == "MCQ":
-        main_data, main_units, arc_abstraction = load_data(args)
+        main_data, main_units, arc_abstraction, timeline_abstraction = load_data(args)
 
     
     print(f"\n=== Step 3: Run the mapping with {args.global_map} mapping and {args.scoring_method} scoring and {args.config} config")
@@ -834,6 +1484,11 @@ def run_main_mapping(args):
         
     elif args.global_map == "Global_mapping":
         accuracy, arn_category_accuracy = Global_assignment_mapping(main_data, main_units, embedding_model, nli_model, nli_token, args)
+
+    elif args.global_map.startswith("GED_"):
+        main_data, main_events, main_conceptual, main_evaluative, main_arc, main_stage, main_timeline = load_ged_data(args)
+        accuracy, arn_category_accuracy = GED_mapping(main_data, main_events, main_conceptual, main_evaluative, main_arc, main_stage, main_timeline, embedding_model, nli_model, nli_token, args)
+
         
     
     print("accuracy: ", accuracy)
