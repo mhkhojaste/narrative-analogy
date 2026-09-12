@@ -866,6 +866,11 @@ def add_shared_arc_and_stage_nodes(graph, backbone_event_nodes, arc_story, stage
             if stage_node_id in graph:
                 graph.add_edge(backbone_node, stage_node_id, type="has_stage")
 
+def timeline_sort_key(event, timeline_story):
+    try:
+        return int(str(timeline_story.get(event, "")).strip())
+    except (TypeError, ValueError):
+        return float("inf")
 
 def build_ged_graph(events_story, conceptual_story, evaluative_story, arc_story, stage_story, timeline_story, graph_variant, args):
     if graph_variant not in VALID_GED_VARIANTS:
@@ -879,7 +884,7 @@ def build_ged_graph(events_story, conceptual_story, evaluative_story, arc_story,
     timeline_story = timeline_story if isinstance(timeline_story, dict) else {}
 
     if args.config.get("timeline", False) in (True, "true"):
-        events_story.sort(key=lambda event: int(timeline_story[event]) if event in timeline_story else float("inf"))
+        events_story.sort(key=lambda event: timeline_sort_key(event, timeline_story))
 
     graph = nx.DiGraph()
 
@@ -1458,6 +1463,8 @@ def load_ged_data(args):
     return main_data, main_events, main_conceptual, main_evaluative, main_arc, main_stage, main_timeline
 
 def run_main_mapping(args):
+    start_time_overall = time.perf_counter()
+
     print("\n=== Step 1: Loading embedding model ===")
     embedding_model = get_embedding_model(args)
     nli_model, nli_token = get_nli_model()
@@ -1495,3 +1502,6 @@ def run_main_mapping(args):
     print("arn_category: ", arn_category_accuracy)
     
     append_results(args, accuracy, arn_category_accuracy)
+    
+    elapsed_time_overall = time.perf_counter() - start_time_overall
+    print("time overall for : ", float(args.config.get("ged_timeout", 5.0)), " is: ", elapsed_time_overall)
