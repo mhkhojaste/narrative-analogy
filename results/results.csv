@@ -200,3 +200,17 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 199,Qwen3-8B-vllm,events,cosine,GED_events_full,"{'version': 199, 'timeline': 'true', 'ged_timeout': 3.0}",0.43,0.5,0.55,0.5,0.52,0.41
 200,Llama-3.1-8B-vllm,events,cosine,GED_events_full,"{'version': 200, 'timeline': 'true', 'ged_timeout': 3.0}",0.4,0.48,0.54,0.46,0.54,0.37
 201,Qwen3-8B-vllm,events,cosine,GED_conceptual_full,"{'version': 201, 'timeline': 'true', 'ged_timeout': 3.0}",0.42,0.49,0.53,0.46,0.52,0.44
+202,Qwen3-8B-vllm,events,nli,GED_events,"{'version': 202, 'ged_timeout': 3.0}",0.3,0.49,0.54,0.49,0.53,0.39
+203,Llama-3.1-8B-vllm,events,nli,GED_events,"{'version': 203, 'ged_timeout': 3.0}",0.24,0.49,0.61,0.45,0.52,0.35
+204,Qwen3-8B-vllm,events,nli,GED_conceptual,"{'version': 204, 'ged_timeout': 3.0}",0.51,0.5,0.55,0.49,0.51,0.46
+205,Llama-3.1-8B-vllm,events,nli,GED_conceptual,"{'version': 205, 'ged_timeout': 3.0}",0.39,0.5,0.62,0.51,0.49,0.37
+206,Qwen3-8B-vllm,events,nli,GED_conceptual_evaluative,"{'version': 206, 'ged_timeout': 3.0}",0.52,0.5,0.57,0.49,0.49,0.44
+207,Llama-3.1-8B-vllm,events,nli,GED_conceptual_evaluative,"{'version': 207, 'ged_timeout': 3.0}",0.4,0.5,0.6,0.48,0.51,0.4
+208,Qwen3-8B-vllm,events,nli,GED_stage,"{'version': 208, 'ged_timeout': 3.0}",0.28,0.52,0.56,0.54,0.5,0.46
+209,Llama-3.1-8B-vllm,events,nli,GED_stage,"{'version': 209, 'ged_timeout': 3.0}",0.29,0.52,0.59,0.52,0.53,0.43
+210,Qwen3-8B-vllm,events,nli,GED_stage_arc,"{'version': 210, 'ged_timeout': 3.0}",0.28,0.51,0.56,0.53,0.5,0.45
+211,Llama-3.1-8B-vllm,events,nli,GED_stage_arc,"{'version': 211, 'ged_timeout': 3.0}",0.33,0.51,0.54,0.54,0.52,0.43
+212,Qwen3-8B-vllm,events,nli,GED_events_full,"{'version': 212, 'ged_timeout': 3.0}",0.41,0.51,0.55,0.5,0.57,0.39
+213,Llama-3.1-8B-vllm,events,nli,GED_events_full,"{'version': 213, 'ged_timeout': 3.0}",0.34,0.48,0.59,0.44,0.55,0.32
+214,Qwen3-8B-vllm,events,nli,GED_conceptual_full,"{'version': 214, 'ged_timeout': 3.0}",0.43,0.52,0.54,0.52,0.57,0.46
+215,Llama-3.1-8B-vllm,events,nli,GED_conceptual_full,"{'version': 215, 'ged_timeout': 3.0}",0.41,0.5,0.57,0.5,0.49,0.42

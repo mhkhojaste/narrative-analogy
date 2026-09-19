@@ -76,6 +76,67 @@ python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "mapping" --unit "
 
 This repository builds *structural maps* for two narratives. It extracts story units, abstracts them to higher-level concepts, groups them into stages and super-units, and finally computes local and global mappings between the narratives. The pipeline also produces scores that indicate how correct each mapping is.
 
+
+------
+
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_events" --config '{"version": 202, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_events" --config '{"version": 202, "ged_timeout":3.0}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_events" --config '{"version": 203, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_events" --config '{"version": 203, "ged_timeout":3.0}'
+
+
+# ##
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual" --config '{"version": 204, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual" --config '{"version": 204, "ged_timeout":3.0}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual" --config '{"version": 205, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual" --config '{"version": 205, "ged_timeout":3.0}'
+
+# ##
+
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_evaluative" --config '{"version": 206, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_evaluative" --config '{"version": 206, "ged_timeout":3.0}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_evaluative" --config '{"version": 207, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_evaluative" --config '{"version": 207, "ged_timeout":3.0}'
+
+# ##
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_stage" --config '{"version": 208, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_stage" --config '{"version": 208, "ged_timeout":3.0}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_stage" --config '{"version": 209, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_stage" --config '{"version": 209, "ged_timeout":3.0}'
+
+# ##
+
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_stage_arc" --config '{"version": 210, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_stage_arc" --config '{"version": 210, "ged_timeout":3.0}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_stage_arc" --config '{"version": 211, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_stage_arc" --config '{"version": 211, "ged_timeout":3.0}'
+
+# ##
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_events_full" --config '{"version": 212, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_events_full" --config '{"version": 212, "ged_timeout":3.0}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_events_full" --config '{"version": 213, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_events_full" --config '{"version": 213, "ged_timeout":3.0}'
+
+# ##
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_full" --config '{"version": 214, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_full" --config '{"version": 214, "ged_timeout":3.0}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_full" --config '{"version": 215, "ged_timeout":3.0}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_full" --config '{"version": 215, "ged_timeout":3.0}'
+
 ---
 
 ## Quick Start
