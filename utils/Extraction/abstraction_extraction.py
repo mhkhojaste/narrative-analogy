@@ -228,11 +228,6 @@ def map_text_to_stages(json_str):
     }
 
 
-def batched(seq, n):
-    for i in range(0, len(seq), n):
-        yield seq[i:i+n]
-
-
 def sort_list_by_dict(lst, dct):
     def sort_key(x):
         val = dct.get(x)

@@ -351,6 +351,9 @@ def check_model_answer(result):
     else:
         return 5
 
+def batched(seq, n):
+    for i in range(0, len(seq), n):
+        yield seq[i:i+n]
 
 def gpu_analysis(prompts):
     prompt_lengths = []

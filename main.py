@@ -23,6 +23,7 @@ import random
 from utils.Extraction.unit_extraction import run_unit_extraction
 from utils.Extraction.abstraction_extraction import run_abstraction_extraction
 from utils.Mapping.main_mapping import run_main_mapping
+from utils.LLM_mapping.llm_mapping_main import run_llm_mapping
 
 
 def parse_arguments():
@@ -45,6 +46,9 @@ def run_task(args):
     elif args.task == "mapping":
         print("\n Start mapping\n ------------")
         run_main_mapping(args)
+    elif args.task == "llm_mapping":
+        print("\n Start LLM mapping\n ------------")
+        run_llm_mapping(args)
     else:
         print(f"\n Start extracting abstractions for {args.task}\n ------------")
         run_abstraction_extraction(args)
