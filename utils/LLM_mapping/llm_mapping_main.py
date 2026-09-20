@@ -33,6 +33,7 @@ from typing import Any, Callable, Sequence
 
 from utils.helper_utils import *
 from Data.Prompts import prompts_llm_event_mapping
+from Data.Prompts import prompts_llm_message_mapping
 
 random.seed(309)
 
@@ -135,14 +136,18 @@ def get_llm_mapping_prompt(args):
     prompt_name = args.config.get("prompt")
 
     valid_prompts = ["prompt_event_mapping_ARN_zs", "prompt_event_mapping_ARN_cot", "prompt_event_mapping_MCQ_zs", "prompt_event_mapping_MCQ_cot"]
+    valid_prompts2 = ["prompt_message_mapping_ARN_zs", "prompt_message_mapping_ARN_cot", "prompt_message_mapping_MCQ_zs", "prompt_message_mapping_MCQ_cot"]
 
-    if prompt_name not in valid_prompts:
+    if prompt_name not in valid_prompts and prompt_name not in valid_prompts2:
         raise ValueError(f"Unknown prompt: {prompt_name}")
 
     if f"_{args.dataset}_" not in prompt_name:
         raise ValueError(f"Prompt {prompt_name} does not match dataset {args.dataset}.")
 
-    return getattr(prompts_llm_event_mapping, prompt_name)
+    if prompt_name in valid_prompts:
+        return getattr(prompts_llm_event_mapping, prompt_name)
+    elif prompt_name in valid_prompts2:
+        return getattr(prompts_llm_message_mapping, prompt_name)
 
 
 def prepare_llm_mapping_prompts(main_data, args):
