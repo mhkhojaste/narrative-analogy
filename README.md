@@ -137,6 +137,21 @@ python main.py --dataset MCQ --model Qwen3-8B-vllm --task "mapping" --unit "even
 python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_full" --config '{"version": 215, "ged_timeout":3.0}'
 python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "mapping" --unit "events" --scoring_method "nli" --global_map "GED_conceptual_full" --config '{"version": 215, "ged_timeout":3.0}'
 
+
+----------
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_ARN_zs"}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_MCQ_zs"}'
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_ARN_cot"}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_MCQ_cot"}'
+
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_ARN_zs"}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_MCQ_zs"}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_ARN_cot"}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_MCQ_cot"}'
+
 ---
 
 ## Quick Start

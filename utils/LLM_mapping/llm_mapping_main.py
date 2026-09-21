@@ -30,6 +30,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable, Sequence
+import unicodedata
+from textwrap import dedent
 
 from utils.helper_utils import *
 from Data.Prompts import prompts_llm_event_mapping
@@ -40,6 +42,8 @@ random.seed(309)
 RESULTS_DIR = "results/"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 RESULTS_PATH = RESULTS_DIR + "results_llm_mapping.csv"
+
+RESULTS_PATH_POLLUTION = RESULTS_DIR + "results_data_pollution.csv"
 
 
 INVALID_ANSWER_INDEX = 5
@@ -117,6 +121,21 @@ def get_llm_mapping_stories(main_data, index, args):
             row["first_choice"].strip(),
             row["second_choice"].strip(),
         ]
+
+        config = args.config if isinstance(args.config, dict) else {}
+        base_percentage = int(config.get("base_percentage", 100))
+
+        if base_percentage < 0 or base_percentage > 100:
+            raise ValueError("base_percentage must be between 0 and 100.")
+
+        if args.unit.lower() == "story":
+            if base_percentage == 0:
+                base_story = ""
+
+            elif base_percentage < 100:
+                base_words = base_story.split()
+                number_of_words = max(1, int(len(base_words) * base_percentage / 100))
+                base_story = " ".join(base_words[:number_of_words])
 
     elif args.dataset == "MCQ":
         sample = main_data[index]
@@ -342,6 +361,8 @@ def extract_llm_answer(raw_answer, target_count):
 
 def get_llm_result_config(args):
     result_config = args.config.copy()
+    result_config.pop("result_path", None)
+
     prompt_name = result_config.get("prompt", "")
     prompt_name = prompt_name.replace("_ARN_", "_{dataset}_")
     prompt_name = prompt_name.replace("_MCQ_", "_{dataset}_")
@@ -351,8 +372,21 @@ def get_llm_result_config(args):
 
 
 def save_llm_mapping_result(args, accuracy, category_dict):
-    if os.path.exists(RESULTS_PATH):
-        results = pd.read_csv(RESULTS_PATH)
+    config = args.config if isinstance(args.config, dict) else {}
+    configured_result_path = config.get("result_path", "empty_path")
+
+    if configured_result_path == "empty_path":
+        results_path = RESULTS_PATH
+    else:
+        results_path = os.path.join(RESULTS_DIR, configured_result_path)
+
+    results_directory = os.path.dirname(results_path)
+
+    if results_directory:
+        os.makedirs(results_directory, exist_ok=True)
+
+    if os.path.exists(results_path):
+        results = pd.read_csv(results_path)
 
         for column in LLM_RESULTS_COLUMNS:
             if column not in results.columns:
@@ -401,9 +435,10 @@ def save_llm_mapping_result(args, accuracy, category_dict):
         for category in ARN_CATEGORIES:
             results.loc[row_index, f"arn {category}"] = category_dict[category]
 
-    results.to_csv(RESULTS_PATH, index=False)
-    print(f"LLM mapping result saved under ID {result_id}")
+    results.to_csv(results_path, index=False)
 
+    print(f"LLM mapping result saved under ID {result_id}")
+    print(f"Results path: {results_path}")
 
 def get_correct_answer(main_data, index, args):
     if args.dataset == "ARN":
@@ -468,6 +503,283 @@ def LLM_mapping_loop_func(main_data, args):
         print("result: ", result)
         print("---------------------------------------------------------------")
 
+## data pollution
+
+def normalize_completion_text(text):
+    text = unicodedata.normalize("NFKC", str(text))
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def get_unique_arn_stories(main_data, args):
+    unique_stories = []
+    seen_stories = set()
+
+    for index in tqdm(range(len(main_data)), desc="Collecting unique ARN stories"):
+        base_story, target_stories = get_llm_mapping_stories(main_data, index, args)
+        current_stories = [base_story] + target_stories
+
+        for story in current_stories:
+            if story is None:
+                continue
+
+            story = normalize_completion_text(story)
+
+            if not story or story.lower() == "nan":
+                continue
+
+            if story not in seen_stories:
+                seen_stories.add(story)
+                unique_stories.append(story)
+
+    return unique_stories
+
+
+def split_story_by_context(story, context_percentage):
+    words = story.split()
+
+    if len(words) < 2:
+        return None, None
+
+    split_index = int(len(words) * context_percentage / 100)
+    split_index = max(1, min(split_index, len(words) - 1))
+
+    visible_context = " ".join(words[:split_index])
+    missing_continuation = " ".join(words[split_index:])
+
+    return visible_context, missing_continuation
+
+
+def create_story_completion_prompt(visible_context, prompt_name):
+    if prompt_name == "guided":
+        return dedent(f"""\
+        You are provided with the FIRST PIECE of an instance from the ARN (Analogical Reasoning on Narratives) dataset.
+
+        Finish the SECOND PIECE of the instance as it EXACTLY appeared in the dataset. ONLY rely on the original form of the instance in the dataset to finish the SECOND PIECE.
+
+        Output ONLY the missing SECOND PIECE. Do not repeat the FIRST PIECE. Do not provide any explanation, label, quotation marks, Markdown formatting, or additional text.
+
+        FIRST PIECE:
+        {visible_context}
+
+        SECOND PIECE:""").strip()
+
+    if prompt_name == "general":
+        return dedent(f"""\
+        You are provided with the FIRST PIECE of a story.
+
+        Finish the SECOND PIECE based on the FIRST PIECE so that they form one complete story.
+
+        Output ONLY the missing SECOND PIECE. Do not repeat the FIRST PIECE. Do not provide any explanation, label, quotation marks, Markdown formatting, or additional text.
+
+        FIRST PIECE:
+        {visible_context}
+
+        SECOND PIECE:""").strip()
+
+    raise ValueError(f"Unknown data-pollution prompt: {prompt_name}")
+
+
+def clean_generated_completion(raw_answer, visible_context):
+    if raw_answer is None:
+        return ""
+
+    answer = str(raw_answer).strip()
+
+    if "</think>" in answer:
+        answer = answer.rsplit("</think>", 1)[-1].strip()
+
+    code_block = re.fullmatch(r"```(?:text)?\s*(.*?)\s*```", answer, re.IGNORECASE | re.DOTALL)
+
+    if code_block:
+        answer = code_block.group(1).strip()
+
+    second_piece_parts = re.split(r"\bSECOND\s+PIECE\s*:\s*", answer, flags=re.IGNORECASE)
+
+    if len(second_piece_parts) > 1:
+        answer = second_piece_parts[-1].strip()
+
+    answer = re.sub(r"^(?:missing\s+continuation|story\s+continuation|continuation|completion|answer|second\s+piece)\s*:\s*", "", answer, flags=re.IGNORECASE)
+    normalized_answer = normalize_completion_text(answer)
+    normalized_context = normalize_completion_text(visible_context)
+
+    if normalized_answer.startswith(normalized_context):
+        normalized_answer = normalized_answer[len(normalized_context):].strip()
+
+    return normalized_answer
+
+
+def levenshtein_distance(reference, prediction):
+    if len(reference) < len(prediction):
+        reference, prediction = prediction, reference
+
+    previous_row = list(range(len(prediction) + 1))
+
+    for reference_index, reference_item in enumerate(reference, start=1):
+        current_row = [reference_index]
+
+        for prediction_index, prediction_item in enumerate(prediction, start=1):
+            insertion_cost = current_row[prediction_index - 1] + 1
+            deletion_cost = previous_row[prediction_index] + 1
+            substitution_cost = previous_row[prediction_index - 1] + (reference_item != prediction_item)
+            current_row.append(min(insertion_cost, deletion_cost, substitution_cost))
+
+        previous_row = current_row
+
+    return previous_row[-1]
+
+
+def sequence_accuracy(reference, prediction):
+    if not reference and not prediction:
+        return 1.0
+
+    if not reference or not prediction:
+        return 0.0
+
+    distance = levenshtein_distance(reference, prediction)
+    return max(0.0, 1.0 - distance / max(len(reference), len(prediction)))
+
+
+def tokenize_completion(text):
+    return re.findall(r"\w+|[^\w\s]", text, flags=re.UNICODE)
+
+
+def calculate_completion_metrics(references, predictions):
+    if len(references) != len(predictions):
+        raise ValueError(f"Found {len(references)} references but {len(predictions)} predictions.")
+
+    if not references:
+        raise ValueError("No references were available for metric calculation.")
+
+    exact_match_scores = []
+    token_accuracy_scores = []
+    character_accuracy_scores = []
+
+    for reference, prediction in zip(references, predictions):
+        reference = normalize_completion_text(reference)
+        prediction = normalize_completion_text(prediction)
+
+        exact_match_scores.append(int(reference == prediction))
+        token_accuracy_scores.append(sequence_accuracy(tokenize_completion(reference), tokenize_completion(prediction)))
+        character_accuracy_scores.append(sequence_accuracy(list(reference), list(prediction)))
+
+    exact_match = sum(exact_match_scores) / len(exact_match_scores)
+    token_accuracy = sum(token_accuracy_scores) / len(token_accuracy_scores)
+    character_accuracy = sum(character_accuracy_scores) / len(character_accuracy_scores)
+
+    return round(exact_match, 4), round(token_accuracy, 4), round(character_accuracy, 4)
+
+
+def save_data_pollution_result(model_name, prompt_name, experiment, exact_match, token_accuracy, character_accuracy, args):
+    columns = ["model_name", "prompt", "experiment", "exact_match", "token_accuracy", "character_accuracy"]
+    new_row = {"model_name": model_name, "prompt": prompt_name, "experiment": experiment, "exact_match": exact_match, "token_accuracy": token_accuracy, "character_accuracy": character_accuracy}
+
+    config = args.config if isinstance(args.config, dict) else {}
+    configured_result_path = config.get("result_path", "empty_path")
+
+    if configured_result_path == "empty_path":
+        results_path = RESULTS_PATH_POLLUTION
+    else:
+        results_path = os.path.join(RESULTS_DIR, configured_result_path)
+
+    results_directory = os.path.dirname(results_path)
+
+    if results_directory:
+        os.makedirs(results_directory, exist_ok=True)
+
+    if os.path.exists(results_path):
+        results = pd.read_csv(results_path)
+    else:
+        results = pd.DataFrame(columns=columns)
+
+    if "prompt" not in results.columns:
+        results["prompt"] = "legacy"
+
+    for column in columns:
+        if column not in results.columns:
+            results[column] = None
+
+    results["experiment"] = pd.to_numeric(results["experiment"], errors="coerce")
+    existing_row = (results["model_name"] == model_name) & (results["prompt"] == prompt_name) & (results["experiment"] == experiment)
+
+    if existing_row.any():
+        for column, value in new_row.items():
+            results.loc[existing_row, column] = value
+    else:
+        results = pd.concat([results, pd.DataFrame([new_row])], ignore_index=True)
+
+    results = results[columns]
+    results = results.sort_values(["model_name", "prompt", "experiment"], kind="stable")
+    results.to_csv(results_path, index=False)
+
+
+def data_pollution_task(main_data, args):
+    if args.dataset.upper() != "ARN":
+        raise ValueError("The context-completion data-pollution experiment only supports ARN.")
+
+    if args.unit.lower() != "context":
+        raise ValueError(f"Unsupported data-pollution unit: {args.unit}")
+
+    config = args.config if isinstance(args.config, dict) else {}
+    prompt_name = str(config.get("prompt", "guided")).strip().lower()
+    valid_prompts = ["guided", "general"]
+    batch_size = int(config.get("batch_size", 16))
+
+    if prompt_name not in valid_prompts:
+        raise ValueError(f"Unknown prompt: {prompt_name}. Valid prompts are: {valid_prompts}")
+
+    if batch_size < 1:
+        raise ValueError("batch_size must be greater than zero.")
+
+    context_percentages = [10, 20, 40, 80]
+    unique_stories = get_unique_arn_stories(main_data, args)
+
+    if not unique_stories:
+        raise ValueError("No ARN stories were found.")
+
+    print(f"Model: {args.model}")
+    print(f"Prompt: {prompt_name}")
+    print(f"Number of unique ARN stories: {len(unique_stories)}")
+    print("----------------------")
+
+    for context_percentage in context_percentages:
+        prompts = []
+        references = []
+        visible_contexts = []
+
+        for story in unique_stories:
+            visible_context, missing_continuation = split_story_by_context(story, context_percentage)
+
+            if visible_context is None:
+                continue
+
+            prompts.append(create_story_completion_prompt(visible_context, prompt_name))
+            references.append(missing_continuation)
+            visible_contexts.append(visible_context)
+
+        raw_answers = []
+
+        for start_index in tqdm(range(0, len(prompts), batch_size), desc=f"{prompt_name} E@{context_percentage}"):
+            prompt_batch = prompts[start_index:start_index + batch_size]
+            batch_answers = query_models_batch(prompt_batch, args.model)
+            raw_answers.extend(batch_answers)
+
+        if len(raw_answers) != len(prompts):
+            raise ValueError(f"The model returned {len(raw_answers)} answers for {len(prompts)} prompts at E@{context_percentage}.")
+
+        predictions = [clean_generated_completion(answer, context) for answer, context in zip(raw_answers, visible_contexts)]
+        empty_predictions = sum(not prediction for prediction in predictions)
+        exact_match, token_accuracy, character_accuracy = calculate_completion_metrics(references, predictions)
+
+        save_data_pollution_result(args.model, prompt_name, context_percentage, exact_match, token_accuracy, character_accuracy, args)
+
+        print(f"Prompt: {prompt_name}")
+        print(f"E@{context_percentage}")
+        print(f"Exact match: {exact_match}")
+        print(f"Token accuracy: {token_accuracy}")
+        print(f"Character accuracy: {character_accuracy}")
+        print(f"Empty predictions: {empty_predictions}")
+        print("----------------------")
 
 def run_llm_mapping(args):
     data_short = args.dataset.lower()
@@ -480,5 +792,7 @@ def run_llm_mapping(args):
     else:
         raise ValueError(f"Unsupported dataset: {args.dataset}")
 
-
-    LLM_mapping_loop_func(main_data, args)
+    if args.task == "llm_mapping":
+        LLM_mapping_loop_func(main_data, args)
+    elif args.task == "data_pollution":
+        data_pollution_task(main_data, args)

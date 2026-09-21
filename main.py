@@ -46,8 +46,8 @@ def run_task(args):
     elif args.task == "mapping":
         print("\n Start mapping\n ------------")
         run_main_mapping(args)
-    elif args.task == "llm_mapping":
-        print("\n Start LLM mapping\n ------------")
+    elif args.task in ["llm_mapping", "data_pollution"]:
+        print(f"\n Start {args.task}\n ------------")
         run_llm_mapping(args)
     else:
         print(f"\n Start extracting abstractions for {args.task}\n ------------")

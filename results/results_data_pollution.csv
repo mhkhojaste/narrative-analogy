@@ -1,0 +1,17 @@
+model_name,prompt,experiment,exact_match,token_accuracy,character_accuracy
+GPT-4o,guided,10,0.0,0.0556,0.1209
+GPT-4o,guided,20,0.0,0.0752,0.1661
+GPT-4o,guided,40,0.0,0.1152,0.2519
+GPT-4o,guided,80,0.0,0.1526,0.2826
+GPT-5.2,guided,10,0.0,0.0821,0.1989
+GPT-5.2,guided,20,0.0,0.0988,0.2309
+GPT-5.2,guided,40,0.0,0.1146,0.2571
+GPT-5.2,guided,80,0.0,0.1477,0.2588
+Llama-3.1-8B-vllm,guided,10,0.0,0.0398,0.0981
+Llama-3.1-8B-vllm,guided,20,0.0,0.0561,0.1322
+Llama-3.1-8B-vllm,guided,40,0.0,0.0815,0.1866
+Llama-3.1-8B-vllm,guided,80,0.0,0.1375,0.2674
+Qwen3-8B-vllm,guided,10,0.0,0.084,0.2203
+Qwen3-8B-vllm,guided,20,0.0,0.095,0.2451
+Qwen3-8B-vllm,guided,40,0.0,0.1041,0.2579
+Qwen3-8B-vllm,guided,80,0.0,0.1022,0.205

@@ -9,9 +9,13 @@ import pandas as pd
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from vllm import LLM, SamplingParams
 import torch
+from openai import OpenAI
+from google import genai
+from google.genai import types
+from tqdm import tqdm
 
 ## Define dicts
-model_short_dict = {"Qwen3-1.7B":"Qwen1_", "Llama-3.1-8B":"Llama8_", "Qwen3-8B":"Qwen8_", "Qwen3-8B-vllm":"Qwen8vllm_", "Llama-3.1-8B-vllm":"Llama8vllm_"}
+model_short_dict = {"Qwen3-1.7B":"Qwen1_", "Llama-3.1-8B":"Llama8_", "Qwen3-8B":"Qwen8_", "Qwen3-8B-vllm":"Qwen8vllm_", "Llama-3.1-8B-vllm":"Llama8vllm_", "GPT-4o": "GPT4o_", "GPT-5.2": "GPT52_"}
 task_abstraction_short = {"timeline_extraction": "timeline", "conceptual_abstraction_level0": "conceptual0", "conceptual_abstraction_level1": "conceptual1",
         "evaluative_abstraction": "evaluative", "arc_abstraction": "arc","stage_abstraction": "stage"}
 
@@ -30,16 +34,8 @@ def read_json_file(file_path):
 config = read_json_file("../config.json")
 
 
-# openai_key = config['openai_key']
-# openai.api_key =openai_key
-# DEEPSEEK_API_URL = config['DEEPSEEK_API_URL']
-# DEEPSEEK_API_KEY = config['DEEPSEEK_API_KEY']
-# headers = {
-#     "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-#     "Content-Type": "application/json"
-# }
-
-# huggingface_key = config['huggingface_key']
+OPENAI_API_KEY = config['openai_key']
+huggingface_key = config['huggingface_key']
 
 
 _qwen_model = None
@@ -56,6 +52,9 @@ _llama31_8_tokenizer_vllm = None
 
 _llama3_model = None
 _llama3_tokenizer = None
+
+_openai_client = None
+
 
 def get_qwen_model():
     global _qwen_model, _qwen_tokenizer
@@ -169,21 +168,33 @@ def query_ollama(prompt, model='gemma3:12b'):
   messages.append({"role": "system", "content": prompt})
   response = ollama.chat(model, messages=messages)
   return response['message']['content'].strip()
+
+
+def get_openai_client():
+    global _openai_client
+
+    if _openai_client is None:
+        _openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+    return _openai_client
  
 
-def query_gpt(prompt,model='gpt-4o-mini-2024-07-18',system_prompt = 'You are a helpful AI assistant. '):
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=[{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': prompt}],
-        n=1,
-        temperature=0,
-        max_tokens=2048,
-    )
+def query_gpt_batch(prompts, model="gpt-4o-2024-11-20"):
+    client = get_openai_client()
+    outputs = []
 
-    output = response['choices'][0]['message']['content']
-    
-    return output
-    
+    for prompt in tqdm(prompts, desc=f"Querying {model}"):
+        response = client.responses.create(
+            model=model,
+            input=prompt,
+            temperature=0,
+            max_output_tokens=3000
+        )
+
+        outputs.append(response.output_text)
+
+    return outputs
+
 
 def query_deepseek(prompt):
   payload = {
@@ -277,23 +288,35 @@ def query_model_vllm_batch(prompts, model_name):
         model, tokenizer = get_qwen3_8_model_vllm()
     elif model_name == "Llama-3.1-8B":
         model, tokenizer = get_llama31_8_model_vllm()
+    else:
+        raise ValueError(f"Unknown vLLM model: {model_name}")
 
-    sampling_params = SamplingParams(
-    temperature=0.0, max_tokens=3000
-    )
+    sampling_params = SamplingParams(temperature=0.0, max_tokens=3000)
 
-    texts = []
-    for p in prompts:
-        msgs = [{"role": "user", "content": p}]
-        if "Qwen" in model_name:
-            t = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, enable_thinking=False)
-        else:  # Llama or others
-            t = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+    if model_name == "Mistral-Small-3.1-24B":
+        conversations = []
 
-        texts.append(t)
+        for prompt in prompts:
+            messages = [{"role": "user", "content": prompt}]
+            conversations.append(messages)
 
-    outs = model.generate(texts, sampling_params)
-    return [o.outputs[0].text for o in outs]
+        outputs = model.chat(conversations, sampling_params=sampling_params)
+    else:
+        texts = []
+
+        for prompt in prompts:
+            messages = [{"role": "user", "content": prompt}]
+
+            if "Qwen" in model_name:
+                text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, enable_thinking=False)
+            else:
+                text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+            texts.append(text)
+
+        outputs = model.generate(texts, sampling_params)
+
+    return [output.outputs[0].text for output in outputs]
 
     
     
@@ -340,8 +363,16 @@ def query_models(prompt, model):
 def query_models_batch(prompts, model):
     if model == "Qwen3-8B-vllm":
         return query_model_vllm_batch(prompts, "Qwen3-8B")
+
     elif model == "Llama-3.1-8B-vllm":
         return query_model_vllm_batch(prompts, "Llama-3.1-8B")
+
+    elif model == "GPT-4o":
+        return query_gpt_batch(prompts, "gpt-4o-2024-11-20")
+
+    elif model == "GPT-5.2":
+        return query_gpt_batch(prompts, "gpt-5.2-2025-12-11")
+
     else:
         raise ValueError(f"Unknown model: {model}")
 
