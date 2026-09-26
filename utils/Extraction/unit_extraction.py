@@ -74,20 +74,46 @@ def build_all_prompts_for_dataset(dataset_dict, dataset_name, args):
     return prompts, index_map
 
 
+def query_unique_prompts(prompts, args, batch_size):
+    unique_prompts = list(dict.fromkeys(prompts))
+    prompt_output_dict = {}
+
+    print(f"Total prompts: {len(prompts)}")
+    print(f"Unique prompts: {len(unique_prompts)}")
+    print(f"Removed duplicate prompts: {len(prompts) - len(unique_prompts)}")
+
+    for chunk in tqdm(list(batched(unique_prompts, batch_size)), desc="Unique prompt batches"):
+        raw_texts = query_models_batch(chunk, args.model)
+
+        if len(raw_texts) != len(chunk):
+            raise ValueError(
+                f"Model returned {len(raw_texts)} outputs for "
+                f"{len(chunk)} prompts."
+            )
+
+        for prompt, raw_text in zip(chunk, raw_texts):
+            prompt_output_dict[prompt] = raw_text
+
+    return prompt_output_dict
+
 def unit_extraction_pipeline_all(data, dataset_name, args, batch_size=16):
     prompts, index_map = build_all_prompts_for_dataset(data, dataset_name, args)
+    prompt_output_dict = query_unique_prompts(prompts, args, batch_size)
 
     unit_dict = {}
     global_offset = 0
 
     print(f"Extracting units for {dataset_name} dataset")
 
-    for chunk in tqdm(list(batched(prompts, batch_size)), desc="Batches"):
-        raw_texts = query_models_batch(chunk, args.model)
+    for chunk in tqdm(list(batched(prompts, batch_size)), desc="Processing outputs"):
+        raw_texts = [prompt_output_dict[prompt] for prompt in chunk]
 
-        assert len(raw_texts) == len(chunk), f"Model batch output size mismatch for batch {global_offset}!"
+        if len(raw_texts) != len(chunk):
+            raise ValueError(
+                f"Output size mismatch for batch {global_offset}."
+            )
 
-        slice_map = index_map[global_offset : global_offset + len(chunk)]
+        slice_map = index_map[global_offset:global_offset + len(chunk)]
 
         for raw, (row_idx, field_name) in zip(raw_texts, slice_map):
             events_arr = extract_event_phrases_from_output(raw)
