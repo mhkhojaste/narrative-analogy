@@ -188,7 +188,7 @@ def query_gpt_batch(prompts, model="gpt-4o-2024-11-20"):
             model=model,
             input=prompt,
             temperature=0,
-            max_output_tokens=3000
+            max_output_tokens=5000
         )
 
         outputs.append(response.output_text)
