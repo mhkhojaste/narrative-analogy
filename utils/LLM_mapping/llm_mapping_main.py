@@ -32,6 +32,7 @@ from types import ModuleType
 from typing import Any, Callable, Sequence
 import unicodedata
 from textwrap import dedent
+from collections import Counter
 
 from utils.helper_utils import *
 from Data.Prompts import prompts_llm_event_mapping
@@ -458,10 +459,15 @@ def get_correct_answer(main_data, index, args):
 def LLM_mapping_loop_func(main_data, args):
     prompts, target_counts = prepare_llm_mapping_prompts(main_data, args)
     batch_size = args.config.get("batch_size", 64)
+    voting = args.config.get("voting", False)
+
+    if not isinstance(voting, bool):
+        raise ValueError("voting must be either true or false.")
+
     raw_answers = []
 
     for chunk in tqdm(list(batched(prompts, batch_size)), desc="Batches"):
-        raw_texts = query_models_batch(chunk, args.model)
+        raw_texts = query_models_batch(chunk, args.model, voting=voting)
         raw_answers.extend(raw_texts)
 
     if len(raw_answers) != len(prompts):
@@ -472,21 +478,53 @@ def LLM_mapping_loop_func(main_data, args):
     category_dict_ref = {"low-near": 294, "low-far": 294, "high-near": 253, "high-far": 254}
     category_dict = {"low-near": 0, "low-far": 0, "high-near": 0, "high-far": 0}
     invalid_answers = 0
+    invalid_sample_answers = 0
 
     for index in tqdm(range(len(main_data)), desc="LLM mapping process"):
         correct_answer, category = get_correct_answer(main_data, index, args)
         y_true.append(correct_answer)
 
-        predicted_answer = extract_llm_answer(raw_answers[index], target_counts[index])
+        if voting:
+            current_raw_answers = raw_answers[index]
+
+            if not isinstance(current_raw_answers, list):
+                raise ValueError(f"Expected multiple answers for sample {index}, " f"but received {type(current_raw_answers).__name__}.")
+
+            current_predictions = [extract_llm_answer(raw_answer, target_counts[index]) for raw_answer in current_raw_answers]
+
+            invalid_sample_answers += current_predictions.count(INVALID_ANSWER_INDEX)
+
+            valid_predictions = [prediction for prediction in current_predictions if prediction != INVALID_ANSWER_INDEX]
+
+            vote_counts = Counter(valid_predictions)
+            required_votes = len(current_predictions) // 2 + 1
+
+            if vote_counts:
+                voted_answer, number_of_votes = vote_counts.most_common(1)[0]
+
+                if number_of_votes >= required_votes:
+                    predicted_answer = voted_answer
+                else:
+                    predicted_answer = INVALID_ANSWER_INDEX
+            else:
+                predicted_answer = INVALID_ANSWER_INDEX
+
+        else:
+            predicted_answer = extract_llm_answer(raw_answers[index], target_counts[index])
+
         y_pred.append(predicted_answer)
 
         if predicted_answer == INVALID_ANSWER_INDEX:
             invalid_answers += 1
 
-        if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
+        if args.dataset == "ARN" and correct_answer == predicted_answer:
             category_dict[category] += 1
 
-    print(f"Invalid LLM answers assigned index {INVALID_ANSWER_INDEX}: {invalid_answers}")
+    if voting:
+        print(f"Invalid individual sampled answers: {invalid_sample_answers}")
+
+    print(
+        f"Final invalid answers assigned index " f"{INVALID_ANSWER_INDEX}: {invalid_answers}")
 
     result = round(metrics.accuracy_score(y_true, y_pred), 2)
 

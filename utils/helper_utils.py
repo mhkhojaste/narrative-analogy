@@ -179,19 +179,30 @@ def get_openai_client():
     return _openai_client
  
 
-def query_gpt_batch(prompts, model="gpt-4o-2024-11-20"):
+def query_gpt_batch(prompts, model="gpt-4o-2024-11-20", voting=False):
     client = get_openai_client()
     outputs = []
 
-    for prompt in tqdm(prompts, desc=f"Querying {model}"):
-        response = client.responses.create(
-            model=model,
-            input=prompt,
-            temperature=0,
-            max_output_tokens=5000
-        )
+    number_of_samples = 3 if voting else 1
+    temperature = 0.7 if voting else 0.0
 
-        outputs.append(response.output_text)
+    for prompt in tqdm(prompts, desc=f"Querying {model}"):
+        current_outputs = []
+
+        for _ in range(number_of_samples):
+            response = client.responses.create(
+                model=model,
+                input=prompt,
+                temperature=temperature,
+                max_output_tokens=3000,
+            )
+
+            current_outputs.append(response.output_text)
+
+        if voting:
+            outputs.append(current_outputs)
+        else:
+            outputs.append(current_outputs[0])
 
     return outputs
 
@@ -283,7 +294,7 @@ def tokenise_vllm_batch(prompt):
     return L
 
 
-def query_model_vllm_batch(prompts, model_name):
+def query_model_vllm_batch(prompts, model_name, voting=False):
     if model_name == "Qwen3-8B":
         model, tokenizer = get_qwen3_8_model_vllm()
     elif model_name == "Llama-3.1-8B":
@@ -291,7 +302,10 @@ def query_model_vllm_batch(prompts, model_name):
     else:
         raise ValueError(f"Unknown vLLM model: {model_name}")
 
-    sampling_params = SamplingParams(temperature=0.0, max_tokens=3000)
+    if voting:
+        sampling_params = SamplingParams(temperature=0.7, max_tokens=3000, n=3, seed=42)
+    else:
+        sampling_params = SamplingParams(temperature=0.0, max_tokens=3000)
 
     if model_name == "Mistral-Small-3.1-24B":
         conversations = []
@@ -316,6 +330,9 @@ def query_model_vllm_batch(prompts, model_name):
 
         outputs = model.generate(texts, sampling_params)
 
+    if voting:
+        return [[candidate.text for candidate in output.outputs] for output in outputs]
+        
     return [output.outputs[0].text for output in outputs]
 
     
@@ -360,18 +377,18 @@ def query_models(prompt, model):
         
     return response_text
     
-def query_models_batch(prompts, model):
+def query_models_batch(prompts, model, voting=False):
     if model == "Qwen3-8B-vllm":
-        return query_model_vllm_batch(prompts, "Qwen3-8B")
+        return query_model_vllm_batch(prompts, "Qwen3-8B", voting)
 
     elif model == "Llama-3.1-8B-vllm":
-        return query_model_vllm_batch(prompts, "Llama-3.1-8B")
+        return query_model_vllm_batch(prompts, "Llama-3.1-8B", voting)
 
     elif model == "GPT-4o":
-        return query_gpt_batch(prompts, "gpt-4o-2024-11-20")
+        return query_gpt_batch(prompts, "gpt-4o-2024-11-20", voting)
 
     elif model == "GPT-5.2":
-        return query_gpt_batch(prompts, "gpt-5.2-2025-12-11")
+        return query_gpt_batch(prompts, "gpt-5.2-2025-12-11", voting)
 
     else:
         raise ValueError(f"Unknown model: {model}")

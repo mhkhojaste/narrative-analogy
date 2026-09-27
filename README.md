@@ -152,6 +152,21 @@ python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "llm_mapping" --un
 python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_ARN_cot"}'
 python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "sentence" --config '{"prompt": "prompt_message_mapping_MCQ_cot"}'
 
+-------
+
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "llm_mapping" --unit "event" --config '{"prompt": "prompt_event_mapping_ARN_zs", "voting": true}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "llm_mapping" --unit "event" --config '{"prompt": "prompt_event_mapping_MCQ_zs", "voting": true}'
+
+python main.py --dataset ARN --model Qwen3-8B-vllm --task "llm_mapping" --unit "event" --config '{"prompt": "prompt_event_mapping_ARN_cot", "voting": true}'
+python main.py --dataset MCQ --model Qwen3-8B-vllm --task "llm_mapping" --unit "event" --config '{"prompt": "prompt_event_mapping_MCQ_cot", "voting": true}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "event" --config '{"prompt": "prompt_event_mapping_ARN_zs", "voting": true}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "event" --config '{"prompt": "prompt_event_mapping_MCQ_zs", "voting": true}'
+
+python main.py --dataset ARN --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "event" --config '{"prompt": "prompt_event_mapping_ARN_cot", "voting": true}'
+python main.py --dataset MCQ --model Llama-3.1-8B-vllm --task "llm_mapping" --unit "event" --config '{"prompt": "prompt_event_mapping_MCQ_cot", "voting": true}'
+
 ---
 
 ## Quick Start
