@@ -32,6 +32,10 @@ def get_nli_model():
         _nli_token = AutoTokenizer.from_pretrained("roberta-large-mnli")
         _nli_model = AutoModelForSequenceClassification.from_pretrained("roberta-large-mnli").to(device).eval()
 
+        label_order = [_nli_model.config.id2label[i].upper() for i in range(_nli_model.config.num_labels)]
+
+        assert label_order == ["CONTRADICTION", "NEUTRAL", "ENTAILMENT"], f"Unexpected NLI label order: {label_order}"
+
     return _nli_model, _nli_token
 
 def similarity(sentence1, sentence2, model):

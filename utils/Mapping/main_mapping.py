@@ -355,8 +355,9 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
                         assert np.isclose(p_contra + p_neutral + p_ent, 1.0, atol=1e-4), f"NLI probabilities do not sum to one for pair {pair}"
 
                         raw_cosine = float(np.dot(B_local[value_index], T_local[value_index]))
+                        nonnegative_cosine = max(0.0, raw_cosine)
                         soft_sign = p_ent + p_neutral - p_contra
-                        nli_score = raw_cosine * soft_sign
+                        nli_score = nonnegative_cosine * soft_sign
 
                         assert np.isfinite(nli_score), f"Invalid NLI score for pair {pair} at sample {index}"
 
@@ -532,8 +533,9 @@ def Role_constrained_mapping(main_data, main_units, main_arc_units, embedding_mo
 
                         p_contra, p_neutral, p_ent = nli_cache[pair]
                         raw_cosine = float(np.dot(B_local[value_index], T_local[value_index]))
+                        nonnegative_cosine = max(0.0, raw_cosine)
                         soft_sign = p_ent + p_neutral - p_contra
-                        nli_score = raw_cosine * soft_sign
+                        nli_score = nonnegative_cosine * soft_sign
                         nli_scores.append(nli_score)
 
                     local_score = float(np.min(nli_scores))
@@ -680,10 +682,11 @@ def Global_assignment_mapping(main_data, main_units, embedding_model, nli_model,
 
                             p_contra, p_neutral, p_ent = nli_cache[pair]
                             raw_cosine = float(np.dot(B_local[value_index], T_local[value_index]))
+                            nonnegative_cosine = max(0.0, raw_cosine)
                             soft_sign = p_ent + p_neutral - p_contra
-                            component_scores.append(raw_cosine * soft_sign)
+                            component_scores.append(nonnegative_cosine * soft_sign)
 
-                        local_score = float(np.mean(component_scores))
+                        local_score = float(np.min(component_scores))
 
                     else:
                         local_score = float(np.mean(np.sum(B_local * T_local, axis=1)))
@@ -725,9 +728,6 @@ def Global_assignment_mapping(main_data, main_units, embedding_model, nli_model,
     print("Global assignment ties:", tie_count)
 
     result = round(metrics.accuracy_score(y_true, y_pred), 2)
-
-    print("y_pred: ", y_pred)
-    dssddsdsdsds
 
     if args.dataset == "ARN":
         for key in category_dict:
@@ -1163,10 +1163,11 @@ def ged_node_substitution_cost(base_data, target_data, embedding_dicts, VI, nli_
 
             p_contra, p_neutral, p_ent = nli_cache[pair]
             raw_cosine = float(np.dot(B_local[value_index], T_local[value_index]))
+            nonnegative_cosine = max(0.0, raw_cosine)
             soft_sign = p_ent + p_neutral - p_contra
-            component_scores.append(raw_cosine * soft_sign)
+            component_scores.append(nonnegative_cosine * soft_sign)
 
-        raw_similarity = float(np.mean(component_scores))
+        raw_similarity = float(np.min(component_scores))
         normalized_similarity = float(np.clip((raw_similarity + 1.0) / 2.0, 0.0, 1.0))
 
     else:
