@@ -195,6 +195,7 @@ def Greedy_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
     y_pred = []
     category_dict_ref = {'low-near': 294, 'low-far': 294, 'high-near': 253, 'high-far': 254}
     category_dict = {'low-near': 0, 'low-far': 0, 'high-near': 0, 'high-far': 0}
+    tie_count = 0
 
     for index in tqdm(range(len(main_data)), desc="Mapping process"):
         sample_unit = main_units[index]
@@ -215,9 +216,12 @@ def Greedy_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
             current_max_score, current_total_score = compute_max_and_total_scores(current_final_solutions)
 
             total_scores.append(current_total_score)
-                
 
-        max_index = random.choice([i for i, val in enumerate(total_scores) if val == max(total_scores)])
+        max_score = max(total_scores)
+        max_indices = [i for i, score in enumerate(total_scores) if score == max_score]
+        if len(max_indices) > 1:
+            tie_count += 1
+        max_index = random.choice(max_indices)
         y_pred.append(max_index)
 
         if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
@@ -225,6 +229,7 @@ def Greedy_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
     
 
     result = round(metrics.accuracy_score(y_true, y_pred), 2)
+    print("Greedy mapping ties:", tie_count)
 
     if args.dataset == "ARN":
         for key in category_dict:
@@ -258,6 +263,7 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
 
     y_true = []
     y_pred = []
+    tie_count = 0
 
     category_dict_ref = {"low-near": 294, "low-far": 294, "high-near": 253, "high-far": 254}
     category_dict = {"low-near": 0, "low-far": 0, "high-near": 0, "high-far": 0}
@@ -383,7 +389,9 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
         assert np.all(np.isfinite(total_scores)), f"Invalid candidate scores at sample {index}"
 
         max_score = max(total_scores)
-        max_indices = [i for i, value in enumerate(total_scores) if np.isclose(value, max_score)]
+        max_indices = [i for i, score in enumerate(total_scores) if score == max_score]
+        if len(max_indices) > 1:
+            tie_count += 1
 
         assert len(max_indices) > 0, f"No valid prediction at sample {index}"
 
@@ -395,6 +403,7 @@ def Linear_mapping(main_data, main_units, embedding_model, nli_model, nli_token,
             category_dict[category] += 1
 
     result = round(metrics.accuracy_score(y_true, y_pred), 2)
+    print("Linear mapping ties:", tie_count)
 
     if args.dataset == "ARN":
         for key in category_dict:
@@ -466,6 +475,7 @@ def Role_constrained_mapping(main_data, main_units, main_arc_units, embedding_mo
 
     empty_target_mappings = 0
     empty_sample_mappings = 0
+    tie_count = 0
 
     for index in tqdm(range(len(main_data)), desc="Role-constrained positional mapping"):
         sample_unit = main_units[index]
@@ -562,6 +572,8 @@ def Role_constrained_mapping(main_data, main_units, main_arc_units, embedding_mo
         else:
             max_score = max(total_scores)
             max_indices = [i for i, score in enumerate(total_scores) if score == max_score]
+            if len(max_indices) > 1:
+                tie_count += 1
             max_index = random.choice(max_indices)
 
         y_pred.append(max_index)
@@ -573,6 +585,7 @@ def Role_constrained_mapping(main_data, main_units, main_arc_units, embedding_mo
     print("Samples without any valid TP mapping:", empty_sample_mappings)
 
     result = round(metrics.accuracy_score(y_true, y_pred), 2)
+    print("Role mapping ties:", tie_count)
 
     if args.dataset == "ARN":
         for key in category_dict:
@@ -725,9 +738,10 @@ def Global_assignment_mapping(main_data, main_units, embedding_model, nli_model,
         if args.dataset == "ARN" and y_true[-1] == y_pred[-1]:
             category_dict[category] += 1
 
-    print("Global assignment ties:", tie_count)
+    
 
     result = round(metrics.accuracy_score(y_true, y_pred), 2)
+    print("Global assignment ties:", tie_count)
 
     if args.dataset == "ARN":
         for key in category_dict:
@@ -1323,7 +1337,7 @@ def GED_mapping(main_data, main_events, main_conceptual, main_evaluative, main_a
             raise ValueError(f"No valid GED target scores at sample {index}.")
 
         max_score = max(total_scores)
-        max_indices = [target_index for target_index, score in enumerate(total_scores) if score == max_score]
+        max_indices = [i for i, score in enumerate(total_scores) if score == max_score]
 
         if len(max_indices) > 1:
             tie_count += 1
@@ -1505,4 +1519,4 @@ def run_main_mapping(args):
     append_results(args, accuracy, arn_category_accuracy)
     
     elapsed_time_overall = time.perf_counter() - start_time_overall
-    print("time overall for : ", float(args.config.get("ged_timeout", 5.0)), " is: ", elapsed_time_overall)
+    # print("time overall for : ", float(args.config.get("ged_timeout", 5.0)), " is: ", elapsed_time_overall)

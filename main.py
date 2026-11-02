@@ -24,6 +24,8 @@ from utils.Extraction.unit_extraction import run_unit_extraction
 from utils.Extraction.abstraction_extraction import run_abstraction_extraction
 from utils.Mapping.main_mapping import run_main_mapping
 from utils.LLM_mapping.llm_mapping_main import run_llm_mapping
+from utils.Extraction.abstraction_extraction_batch_upload import submit_abstraction_batch
+from utils.Extraction.abstraction_extraction_batch_check import check_abstraction_batch
 
 
 def parse_arguments():
@@ -49,6 +51,10 @@ def run_task(args):
     elif args.task in ["llm_mapping", "data_pollution"]:
         print(f"\n Start {args.task}\n ------------")
         run_llm_mapping(args)
+    elif args.task == "abstraction_batch_upload":
+        submit_abstraction_batch(args)
+    elif args.task == "abstraction_batch_check":
+        check_abstraction_batch(args)
     else:
         print(f"\n Start extracting abstractions for {args.task}\n ------------")
         run_abstraction_extraction(args)

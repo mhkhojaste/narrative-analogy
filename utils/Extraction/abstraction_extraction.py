@@ -332,6 +332,25 @@ def build_all_prompts_abstraction(dataset_dict, dataset_event, dataset_name, arg
 
 ############# Run the dataset
 
+def query_unique_prompts(prompts, args, batch_size):
+    unique_prompts = list(dict.fromkeys(prompts))
+    prompt_output_dict = {}
+
+    print(f"Total prompts: {len(prompts)}")
+    print(f"Unique prompts: {len(unique_prompts)}")
+    print(f"Removed duplicate prompts: {len(prompts) - len(unique_prompts)}")
+
+    for chunk in tqdm(list(batched(unique_prompts, batch_size)), desc="Unique prompt batches"):
+        raw_texts = query_models_batch(chunk, args.model)
+
+        if len(raw_texts) != len(chunk):
+            raise ValueError(f"Model returned {len(raw_texts)} outputs for " f"{len(chunk)} unique prompts.")
+
+        for prompt, raw_text in zip(chunk, raw_texts):
+            prompt_output_dict[prompt] = raw_text
+
+    return prompt_output_dict
+
 def abstraction_extraction_pipeline_all(dataset_data, dataset_event, dataset_name, args, batch_size=16):
     target_numbers = {"timeline_extraction": 1, "conceptual_abstraction_level0": 2, "conceptual_abstraction_level1": 3, "evaluative_abstraction": 4,
         "arc_abstraction": 5, "stage_abstraction": 6}
@@ -340,6 +359,12 @@ def abstraction_extraction_pipeline_all(dataset_data, dataset_event, dataset_nam
         raise ValueError(f"Unsupported task: {args.task}")
 
     prompts, index_map = build_all_prompts_abstraction(dataset_data, dataset_event, dataset_name, args)
+    # print(prompts[0])
+    # print("######")
+    if len(prompts) != len(index_map):
+        raise ValueError(f"Prompt/index-map size mismatch: " f"{len(prompts)} prompts and {len(index_map)} mappings.")
+
+    prompt_output_dict = query_unique_prompts(prompts, args, batch_size)
 
     model_short = model_short_dict.get(args.model)
     dataset_suffix = dataset_name.lower()
@@ -358,7 +383,9 @@ def abstraction_extraction_pipeline_all(dataset_data, dataset_event, dataset_nam
     print(f"Extracting abstractions for {dataset_name} dataset")
 
     for chunk in tqdm(list(batched(prompts, batch_size)), desc="Batches"):
-        raw_texts = query_models_batch(chunk, args.model)
+        raw_texts = [prompt_output_dict[prompt] for prompt in chunk]
+        # print(raw_texts[0])
+        # dsdssdds
 
         assert len(raw_texts) == len(chunk), f"Model batch output size mismatch for batch {global_offset}!"
 
