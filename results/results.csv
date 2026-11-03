@@ -328,3 +328,39 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 327,GPT-4o,stage_arc,cosine_modernbert,Linear,"{'version': 327, 'top_output': 3}",0.3,0.53,0.64,0.53,0.53,0.42
 328,GPT-4o,stage_arc,mahalanobis,Linear,"{'version': 328, 'top_output': 3}",0.32,0.5,0.56,0.49,0.51,0.44
 329,GPT-4o,stage_arc,nli,Linear,"{'version': 329, 'top_output': 3}",0.24,0.5,0.61,0.45,0.52,0.42
+330,GPT-4o,events,cosine,Role_mapping,"{'version': 330, 'top_output': 3}",0.14,0.42,0.72,0.32,0.54,0.06
+331,GPT-4o,events,cosine_modernbert,Role_mapping,"{'version': 331, 'top_output': 3}",0.16,0.47,0.79,0.32,0.65,0.07
+332,GPT-4o,events,mahalanobis,Role_mapping,"{'version': 332, 'top_output': 3}",0.17,0.48,0.69,0.38,0.64,0.17
+333,GPT-4o,events,nli,Role_mapping,"{'version': 333, 'top_output': 3}",0.13,0.51,0.67,0.42,0.62,0.32
+334,GPT-4o,conceptual0,cosine,Role_mapping,"{'version': 334, 'top_output': 3, 'text_modify': 'only_root'}",0.39,0.53,0.62,0.45,0.6,0.44
+335,GPT-4o,conceptual0,cosine_modernbert,Role_mapping,"{'version': 335, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.51,0.55,0.43,0.57,0.5
+336,GPT-4o,conceptual0,mahalanobis,Role_mapping,"{'version': 336, 'top_output': 3, 'text_modify': 'only_root'}",0.34,0.52,0.54,0.45,0.58,0.5
+337,GPT-4o,conceptual0,nli,Role_mapping,"{'version': 337, 'top_output': 3, 'text_modify': 'only_root'}",0.39,0.58,0.66,0.53,0.64,0.48
+338,GPT-4o,conceptual0_evaluative,cosine,Role_mapping,"{'version': 338, 'top_output': 3, 'text_modify': 'only_root'}",0.38,0.52,0.6,0.42,0.55,0.5
+339,GPT-4o,conceptual0_evaluative,cosine_modernbert,Role_mapping,"{'version': 339, 'top_output': 3, 'text_modify': 'only_root'}",0.39,0.51,0.59,0.41,0.56,0.49
+340,GPT-4o,conceptual0_evaluative,mahalanobis,Role_mapping,"{'version': 340, 'top_output': 3, 'text_modify': 'only_root'}",0.36,0.52,0.58,0.46,0.53,0.5
+341,GPT-4o,conceptual0_evaluative,nli,Role_mapping,"{'version': 341, 'top_output': 3, 'text_modify': 'only_root'}",0.39,0.56,0.61,0.54,0.56,0.54
+342,GPT-4o,stage,cosine,Role_mapping,"{'version': 342, 'top_output': 3}",0.17,0.58,0.8,0.49,0.71,0.29
+343,GPT-4o,stage,cosine_modernbert,Role_mapping,"{'version': 343, 'top_output': 3}",0.25,0.58,0.82,0.48,0.7,0.32
+344,GPT-4o,stage,mahalanobis,Role_mapping,"{'version': 344, 'top_output': 3}",0.22,0.5,0.6,0.45,0.67,0.29
+345,GPT-4o,stage,nli,Role_mapping,"{'version': 345, 'top_output': 3}",0.2,0.57,0.7,0.45,0.66,0.45
+346,GPT-4o,events,cosine,Greedy,"{'version': 346, 'top_output': 3}",0.15,0.46,0.81,0.31,0.63,0.08
+347,GPT-4o,events,cosine_modernbert,Greedy,"{'version': 347, 'top_output': 3}",0.23,0.53,0.83,0.39,0.69,0.18
+348,GPT-4o,events,mahalanobis,Greedy,"{'version': 348, 'top_output': 3}",0.2,0.53,0.79,0.42,0.64,0.25
+349,GPT-4o,events,nli,Greedy,"{'version': 349, 'top_output': 3}",0.13,0.47,0.77,0.3,0.65,0.16
+350,GPT-4o,conceptual0,cosine,Greedy,"{'version': 350, 'top_output': 3, 'text_modify': 'only_root'}",0.43,0.58,0.79,0.51,0.68,0.34
+351,GPT-4o,conceptual0,cosine_modernbert,Greedy,"{'version': 351, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.59,0.81,0.52,0.66,0.35
+352,GPT-4o,conceptual0,mahalanobis,Greedy,"{'version': 352, 'top_output': 3, 'text_modify': 'only_root'}",0.36,0.57,0.78,0.48,0.67,0.35
+353,GPT-4o,conceptual0,nli,Greedy,"{'version': 353, 'top_output': 3, 'text_modify': 'only_root'}",0.4,0.6,0.75,0.57,0.67,0.39
+354,GPT-4o,conceptual0_evaluative,cosine,Greedy,"{'version': 354, 'top_output': 3, 'text_modify': 'only_root'}",0.42,0.58,0.76,0.55,0.62,0.37
+355,GPT-4o,conceptual0_evaluative,cosine_modernbert,Greedy,"{'version': 355, 'top_output': 3, 'text_modify': 'only_root'}",0.4,0.6,0.75,0.57,0.65,0.39
+356,GPT-4o,conceptual0_evaluative,mahalanobis,Greedy,"{'version': 356, 'top_output': 3, 'text_modify': 'only_root'}",0.4,0.58,0.73,0.57,0.64,0.37
+357,GPT-4o,conceptual0_evaluative,nli,Greedy,"{'version': 357, 'top_output': 3, 'text_modify': 'only_root'}",0.38,0.62,0.73,0.57,0.68,0.49
+358,GPT-4o,stage,cosine,Greedy,"{'version': 358, 'top_output': 3}",0.24,0.57,0.81,0.49,0.66,0.29
+359,GPT-4o,stage,cosine_modernbert,Greedy,"{'version': 359, 'top_output': 3}",0.29,0.57,0.83,0.51,0.61,0.31
+360,GPT-4o,stage,mahalanobis,Greedy,"{'version': 360, 'top_output': 3}",0.25,0.53,0.7,0.46,0.58,0.36
+361,GPT-4o,stage,nli,Greedy,"{'version': 361, 'top_output': 3}",0.23,0.56,0.74,0.47,0.68,0.34
+362,GPT-4o,stage_arc,cosine,Greedy,"{'version': 362, 'top_output': 3}",0.34,0.55,0.76,0.51,0.6,0.32
+363,GPT-4o,stage_arc,cosine_modernbert,Greedy,"{'version': 363, 'top_output': 3}",0.36,0.56,0.76,0.5,0.61,0.35
+364,GPT-4o,stage_arc,mahalanobis,Greedy,"{'version': 364, 'top_output': 3}",0.35,0.52,0.64,0.47,0.56,0.38
+365,GPT-4o,stage_arc,nli,Greedy,"{'version': 365, 'top_output': 3}",0.25,0.55,0.66,0.49,0.64,0.41
