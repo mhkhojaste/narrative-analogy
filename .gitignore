@@ -15,4 +15,4 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-Data/Data_new/OpenAI_Batches
+Data_new/OpenAI_Batches
