@@ -16441,5 +16441,8 @@
       "target2"
     ]
   ],
-  "processed": false
+  "processed": true,
+  "output_file_id": "file-RsbpQQj4uf8fNDVBsgmPNS",
+  "output_path": "Data_new/OpenAI_Batches/GPT-5_2_arn_conceptual_abstraction_level0_events.output.jsonl",
+  "result_path": "Data_new/Abstraction/GPT52_events_conceptual0_arn.pkl"
 }

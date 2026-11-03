@@ -364,3 +364,14 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 363,GPT-4o,stage_arc,cosine_modernbert,Greedy,"{'version': 363, 'top_output': 3}",0.36,0.56,0.76,0.5,0.61,0.35
 364,GPT-4o,stage_arc,mahalanobis,Greedy,"{'version': 364, 'top_output': 3}",0.35,0.52,0.64,0.47,0.56,0.38
 365,GPT-4o,stage_arc,nli,Greedy,"{'version': 365, 'top_output': 3}",0.25,0.55,0.66,0.49,0.64,0.41
+366,GPT-4o,events,cosine,Global_mapping,"{'version': 366, 'top_output': 3}",0.11,0.41,0.71,0.26,0.58,0.08
+367,GPT-4o,events,cosine_modernbert,Global_mapping,"{'version': 367, 'top_output': 3}",0.12,0.46,0.82,0.25,0.68,0.05
+368,GPT-4o,events,mahalanobis,Global_mapping,"{'version': 368, 'top_output': 3}",0.14,0.48,0.78,0.34,0.65,0.11
+369,GPT-4o,events,nli,Global_mapping,"{'version': 369, 'top_output': 3}",0.09,0.45,0.73,0.29,0.64,0.14
+370,GPT-4o,conceptual0,cosine,Global_mapping,"{'version': 370, 'top_output': 3, 'text_modify': 'only_root'}",0.42,0.59,0.77,0.51,0.64,0.42
+371,GPT-4o,conceptual0,cosine_modernbert,Global_mapping,"{'version': 371, 'top_output': 3, 'text_modify': 'only_root'}",0.42,0.61,0.76,0.55,0.66,0.46
+372,GPT-4o,conceptual0,mahalanobis,Global_mapping,"{'version': 372, 'top_output': 3, 'text_modify': 'only_root'}",0.36,0.55,0.66,0.47,0.65,0.43
+373,GPT-4o,conceptual0,nli,Global_mapping,"{'version': 373, 'top_output': 3, 'text_modify': 'only_root'}",0.42,0.61,0.75,0.55,0.67,0.47
+374,GPT-4o,conceptual0_evaluative,cosine,Global_mapping,"{'version': 374, 'top_output': 3, 'text_modify': 'only_root'}",0.44,0.59,0.69,0.58,0.59,0.49
+375,GPT-4o,conceptual0_evaluative,cosine_modernbert,Global_mapping,"{'version': 375, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.6,0.67,0.58,0.62,0.51
+376,GPT-4o,conceptual0_evaluative,mahalanobis,Global_mapping,"{'version': 376, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.58,0.65,0.58,0.58,0.52
