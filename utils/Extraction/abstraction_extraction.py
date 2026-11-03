@@ -343,6 +343,23 @@ def query_unique_prompts(prompts, args, batch_size):
     for chunk in tqdm(list(batched(unique_prompts, batch_size)), desc="Unique prompt batches"):
         raw_texts = query_models_batch(chunk, args.model)
 
+        print(chunk)
+        print("########")
+        print("########")
+        print("########")
+        print("########")
+        print("########")
+        print("########")
+        print("########")
+        print("########")
+        print("########")
+        print("########")
+        print(raw_texts)
+        dssdsdds
+        dsdsdsds
+        cxcxvxvcx
+        rrrtrt
+
         if len(raw_texts) != len(chunk):
             raise ValueError(f"Model returned {len(raw_texts)} outputs for " f"{len(chunk)} unique prompts.")
 
@@ -359,8 +376,6 @@ def abstraction_extraction_pipeline_all(dataset_data, dataset_event, dataset_nam
         raise ValueError(f"Unsupported task: {args.task}")
 
     prompts, index_map = build_all_prompts_abstraction(dataset_data, dataset_event, dataset_name, args)
-    # print(prompts[0])
-    # print("######")
     if len(prompts) != len(index_map):
         raise ValueError(f"Prompt/index-map size mismatch: " f"{len(prompts)} prompts and {len(index_map)} mappings.")
 
@@ -384,8 +399,6 @@ def abstraction_extraction_pipeline_all(dataset_data, dataset_event, dataset_nam
 
     for chunk in tqdm(list(batched(prompts, batch_size)), desc="Batches"):
         raw_texts = [prompt_output_dict[prompt] for prompt in chunk]
-        # print(raw_texts[0])
-        # dsdssdds
 
         assert len(raw_texts) == len(chunk), f"Model batch output size mismatch for batch {global_offset}!"
 

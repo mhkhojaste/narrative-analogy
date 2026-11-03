@@ -375,3 +375,12 @@ id,model,unit,scoring_method,global_map,config,MCQ accuracy,ARN accuracy,arn low
 374,GPT-4o,conceptual0_evaluative,cosine,Global_mapping,"{'version': 374, 'top_output': 3, 'text_modify': 'only_root'}",0.44,0.59,0.69,0.58,0.59,0.49
 375,GPT-4o,conceptual0_evaluative,cosine_modernbert,Global_mapping,"{'version': 375, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.6,0.67,0.58,0.62,0.51
 376,GPT-4o,conceptual0_evaluative,mahalanobis,Global_mapping,"{'version': 376, 'top_output': 3, 'text_modify': 'only_root'}",0.41,0.58,0.65,0.58,0.58,0.52
+377,GPT-4o,conceptual0_evaluative,nli,Global_mapping,"{'version': 377, 'top_output': 3, 'text_modify': 'only_root'}",0.44,0.61,0.7,0.54,0.69,0.51
+378,GPT-4o,stage,cosine,Global_mapping,"{'version': 378, 'top_output': 3}",0.16,0.56,0.8,0.43,0.73,0.25
+379,GPT-4o,stage,cosine_modernbert,Global_mapping,"{'version': 379, 'top_output': 3}",0.21,0.58,0.84,0.48,0.72,0.28
+380,GPT-4o,stage,mahalanobis,Global_mapping,"{'version': 380, 'top_output': 3}",0.17,0.51,0.65,0.41,0.67,0.32
+381,GPT-4o,stage,nli,Global_mapping,"{'version': 381, 'top_output': 3}",0.19,0.57,0.77,0.47,0.72,0.3
+382,GPT-4o,stage_arc,cosine,Global_mapping,"{'version': 382, 'top_output': 3}",0.26,0.56,0.77,0.49,0.64,0.32
+383,GPT-4o,stage_arc,cosine_modernbert,Global_mapping,"{'version': 383, 'top_output': 3}",0.29,0.58,0.77,0.49,0.67,0.37
+384,GPT-4o,stage_arc,mahalanobis,Global_mapping,"{'version': 384, 'top_output': 3}",0.31,0.52,0.62,0.47,0.63,0.37
+385,GPT-4o,stage_arc,nli,Global_mapping,"{'version': 385, 'top_output': 3}",0.2,0.57,0.72,0.5,0.69,0.38
