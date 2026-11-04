@@ -173,11 +173,15 @@ def map_text_to_abstraction(array, json_str, target_number):
     start = json_str.find("<JSON>")
     end = json_str.find("</JSON>", start)
 
-    json_str_clean = (
-        json_str[start + len("<JSON>") : end].strip()
-        if start != -1 and end != -1
-        else ""
-    )
+    if start != -1:
+        content_start = start + len("<JSON>")
+        json_str_clean = (
+            json_str[content_start:end].strip()
+            if end != -1
+            else json_str[content_start:].strip()
+        )
+    else:
+        json_str_clean = json_str.strip()
 
     try:
         data = json.loads(json_str_clean)
@@ -209,11 +213,15 @@ def map_text_to_stages(json_str):
     start = json_str.find("<JSON>")
     end = json_str.find("</JSON>", start)
 
-    json_str_clean = (
-        json_str[start + len("<JSON>"):end].strip()
-        if start != -1 and end != -1
-        else ""
-    )
+    if start != -1:
+        content_start = start + len("<JSON>")
+        json_str_clean = (
+            json_str[content_start:end].strip()
+            if end != -1
+            else json_str[content_start:].strip()
+        )
+    else:
+        json_str_clean = json_str.strip()
 
     try:
         data = json.loads(json_str_clean)
@@ -342,23 +350,6 @@ def query_unique_prompts(prompts, args, batch_size):
 
     for chunk in tqdm(list(batched(unique_prompts, batch_size)), desc="Unique prompt batches"):
         raw_texts = query_models_batch(chunk, args.model)
-
-        print(chunk)
-        print("########")
-        print("########")
-        print("########")
-        print("########")
-        print("########")
-        print("########")
-        print("########")
-        print("########")
-        print("########")
-        print("########")
-        print(raw_texts)
-        dssdsdds
-        dsdsdsds
-        cxcxvxvcx
-        rrrtrt
 
         if len(raw_texts) != len(chunk):
             raise ValueError(f"Model returned {len(raw_texts)} outputs for " f"{len(chunk)} unique prompts.")
